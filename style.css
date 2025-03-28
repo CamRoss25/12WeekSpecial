@@ -54,6 +54,11 @@ margin-bottom: 15px;
     transition: width 0.3s ease-in-out;
 }
 
+#ir-sensor-1{
+    height:100px;
+    width:100px;
+}
+
 #connectStat{
     color: rgb(195, 35, 35);
 }

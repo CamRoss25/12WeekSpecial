@@ -4,9 +4,6 @@
 //3) Follow the path of a robot, I want it to make dots on a map or the path 
 //4) The robot will move while a controller is controlling its movements
 //--> 
-//<script src="roslibjs.js"></script>
-//<!-- Use this for working on your own development -->
-//<!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/roslibjs/1.1.0/roslib.js" integrity="sha512-pCcZE7tYxCroXRw6OsC4hnCKF+cYszKf2I4++0xASgb4wm7rgf8tY65tmmgnvb9zxWQt1JeOE/lKPTdp9FLoCw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script> -->
 
 console.clear();
 console.log('JS LOADED')
