@@ -40,6 +40,11 @@ class RaceVel:
         self.ir_prev_error = 0
 
         self.ir_values = robot.ir_values
+        self.ir_values_0 = [0,0,0,0,0,0,0]
+        self.ir_values_1 = [0,0,0,0,0,0,0]
+        self.ir_values_2 = [0,0,0,0,0,0,0]
+        self.ir_values_3 = [0,0,0,0,0,0,0]
+        self.ir_values_4 = [0,0,0,0,0,0,0]
 
         self.ir_call = robot.ir_call
 
@@ -97,7 +102,7 @@ class RaceVel:
     
     def velocity_compute(self):
 
-        ir_desired = 150
+        ir_desired = 100
         ir_values = self.ir_values
         ir_error_left = ir_desired - ir_values[2]
         ir_error_center = ir_desired - ir_values[3]
@@ -145,7 +150,15 @@ class RaceVel:
         self.current_heading = robot.yaw_deg
         self.current_position = robot.odom_values
         self.ir_call = robot.ir_call
-        self.ir_values = robot.ir_values
+
+        # Age the IR values and take the average of the last 5 to get the best current IR values
+        self.ir_values_4 = self.ir_values_3
+        self.ir_values_3 = self.ir_values_2
+        self.ir_values_2 = self.ir_values_1
+        self.ir_values_1 = self.ir_values_0
+        self.ir_values_0 = robot.ir_values
+        list_avg = [sum(x)/len(x) for x in zip(self.ir_values_4, self.ir_values_3, self.ir_values_2, self.ir_values_1, self.ir_values_0)]
+        self.ir_values = list_avg
 
     def vel_msg(self, robot):
         """This publishes a velocity message to our robot"""
