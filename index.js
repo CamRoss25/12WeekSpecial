@@ -48,7 +48,9 @@ const changeConnection = function (){
   });
   // make a subscriber to the battery
   battTopic.subscribe((msg)=>{
-      battVolt.textContent = msg['voltage'].toFixed(3);
+      maxVolts = 16.8;
+      voltPercent = (msg['voltage'].toFixed(3) / maxVolts) * 100;
+      battVolt.textContent = `${voltPercent.toFixed(1)} %`;
   });
 
   // make a topic for the IR sensor

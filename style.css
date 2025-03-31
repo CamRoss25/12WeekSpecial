@@ -1,7 +1,6 @@
 
 #controlPanel{
     background-color: rgb(180, 164, 164);
-    width: 100%;
     font-family: 'Courier New', Courier, monospace;
     text-align: center;
     padding: 10px;
@@ -30,21 +29,38 @@
 
 #intensityDisplay{
     position:relative;
-    padding-top: 5%;
+    width: 80%;
+    padding: 10px;
+    border-radius: 10px;
+    display: flex;
+    justify-content: space-between;
+    flex-direction: row;
+    align-items: center; /* centers items vertically  */
+    margin-bottom: 15px;
+    margin:auto;
 }
 
-.sensorContainer {
+.sensorContainer1 {
 display: flex;
 justify-content: space-between;
 flex-direction: column;
-align-items: left;
+align-items: center; /* centers items vertically  */
 margin-bottom: 15px;
+}
+
+.sensorContainer2 {
+    display: flex;
+    justify-content: space-between;
+    flex-direction: column;
+    align-items: center; /* centers items vertically  */
+    margin-bottom: 15px;
 }
 
 .sensorLabel {
     font-size: 16px;
     font-weight: bold;
     margin-bottom: 5px;
+    flex: 1;
 }
 
 .sensorBar {
@@ -52,11 +68,28 @@ margin-bottom: 15px;
     height: 100%;
     background-color: lightgray;
     transition: width 0.3s ease-in-out;
+
 }
 
 #ir-sensor-1{
-    height:100px;
-    width:100px;
+    height:30vh;
+    width:5vw;
+}
+
+#ir-sensor-7{
+    height:30vh;
+    width:5vw;
+}
+
+#timerBox{
+    background-color: rgb(180, 164, 164);
+    font-family: 'Courier New', Courier, monospace;
+    text-align: center;
+    padding: 10px;
+    width: 80%;
+    margin: auto;
+    border: 5px solid rgb(18, 16, 145);
+    border-radius: 10px;
 }
 
 #connectStat{
@@ -75,6 +108,19 @@ background-color: transparent;
 text-shadow: 3px 3px 2px rgba(108, 113, 128, 1);
 transition: 50ms ease-in;
 }
+#startBtn{
+    border:none;
+    font-size: 3.5em;
+    margin: 5px;
+    background-color: transparent;
+    text-shadow: 3px 3px 2px rgba(108, 113, 128, 1);
+    transition: 50ms ease-in;
+}    
+#startBtn:hover{
+    cursor: pointer;
+    font-size: 5em;
+}
+
 .container{
 text-align: center;
 font-size: large;
