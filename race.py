@@ -5,18 +5,18 @@ class RaceVel:
 
     def __init__(self, robot):
         # Initialize PID constants and other parameters
-        self.head_kp = 0.005        # Heading Proportional gain
-        self.head_ki = 0.0001      # Heading Integral gain
-        self.head_kd = 0.001         # Heading Derivative gain
+        self.head_kp = 0.0045        # Heading Proportional gain
+        self.head_ki = 0.0002      # Heading Integral gain
+        self.head_kd = 0.0025         # Heading Derivative gain
         self.head_prev_error = 0.0  # Previous heading error for derivative term
         self.head_integral = 0.0    # Integral heading sum
         self.desired_heading = 0
         self.head_error = 1
         self.robot = robot
 
-        self.vel_kp = .6           # Velocity Proportional gain
-        self.vel_ki = 0.005          # Velocity Integral gain
-        self.vel_kd = .05          # Velocity Derivative gain
+        self.vel_kp = .3           # Velocity Proportional gain
+        self.vel_ki = 0.002          # Velocity Integral gain
+        self.vel_kd = 0.05         # Velocity Derivative gain
         self.vel_prev_error = 0.0   # Previous velocity error for derivative term
         self.vel_integral = 0.0     # Integral velocity sum
 
@@ -93,22 +93,25 @@ class RaceVel:
 
         output = round(max(self.head_min_output, min(self.head_max_output, output)), 2)
         
-        if output >= 1 or output <= -1:
-            self.turning = True
-        else:
-            self.turning = False
-
+        if self.current_velocity >= .29:
+            self.ir_prev_error = self.ir_prev_error / 2
+            self.head_prev_error = self.head_prev_error / 2
+            self.head_integral = self.head_integral / 2
         return output
     
     def velocity_compute(self):
 
-        ir_desired = 100
+        ir_desired = 75
         ir_values = self.ir_values
         ir_error_left = ir_desired - ir_values[2]
         ir_error_center = ir_desired - ir_values[3]
         ir_error_right = ir_desired - ir_values[4]
 
-        ir_error = min(ir_error_left, ir_error_center, ir_error_right)
+        for i in range(0,len(ir_values)):
+            if ir_values[i] > 1000:
+                ir_error = ir_desired - ir_values[i]
+            else:
+                ir_error = min(ir_error_left, ir_error_center, ir_error_right)
 
 
         # Calculate the desired velocity based on the ir error
