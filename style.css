@@ -123,6 +123,33 @@ transition: 50ms ease-in;
     font-size: 5em;
 }
 
+#trackContainer{
+    background-color: white;
+    width: 50vw;
+    height: 50vh;
+    margin: auto;
+    border-radius: 10px;
+    border-width: 5px;
+    border-style: solid;
+    border-image: 
+        linear-gradient(
+            to bottom,
+            rgb(76, 0, 255),
+            rgba(0, 0 ,0,0)
+        ) 1 100%;
+    margin-top: 10px;
+    margin-bottom: 10px;
+    position: relative;
+}
+
+.robot {
+    width: 10px;
+    height: 10px;
+    border-radius: 10px;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+}
 
 .container{
 text-align: center;

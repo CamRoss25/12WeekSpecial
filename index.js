@@ -149,7 +149,21 @@ const changeConnection = function (){
     valY.textContent = position.y.toFixed(3); // the x value in odom
     
     valZ.textContent = yaw.toFixed(3); // the x value in odom
-  })
+
+    // move the robot on the screen
+    const container = document.getElementById('trackContainer');
+    const contWidth = container.offsetWidth;
+    const contHeight = container.offsetHeight;
+    const scale = 50;
+
+    let newX = scale * position.x;
+    let newY = scale * position.y;
+    // Ensure the robot stays within the container's bounds
+    newX = Math.min(Math.max(newX, 0), contWidth - robotEl.offsetWidth); // Limit the x position
+    newY = Math.min(Math.max(newY, 0), contHeight - robotEl.offsetHeight); // Limit the y position
+
+    robotEl.style.transform = `translate(${newX}px, ${newY}px)`;
+  });
 
   // starting the timere function
   let time_ms = 0; // initial time in ms
@@ -178,7 +192,7 @@ const changeConnection = function (){
       }, 10)
   });
 
-  pauseBtn.addEventListener('click', () => {
+  stopBtn.addEventListener('click', () => {
     if (isRunning) {
       console.log('PAUSE TIMER');
       clearInterval(timer); // stop the timer 
