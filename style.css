@@ -108,18 +108,21 @@ background-color: transparent;
 text-shadow: 3px 3px 2px rgba(108, 113, 128, 1);
 transition: 50ms ease-in;
 }
-#startBtn{
-    border:none;
-    font-size: 3.5em;
-    margin: 5px;
-    background-color: transparent;
-    text-shadow: 3px 3px 2px rgba(108, 113, 128, 1);
-    transition: 50ms ease-in;
-}    
-#startBtn:hover{
+
+.timerBtns{
+border:none;
+font-size: 3.5em;
+margin: 5px;
+background-color: transparent;
+text-shadow: 3px 3px 2px rgba(108, 113, 128, 1);
+transition: 50ms ease-in;   
+}
+
+.timerBtns:hover{
     cursor: pointer;
     font-size: 5em;
 }
+
 
 .container{
 text-align: center;

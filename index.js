@@ -151,7 +151,48 @@ const changeConnection = function (){
     valZ.textContent = yaw.toFixed(3); // the x value in odom
   })
 
+  // starting the timere function
+  let time_ms = 0; // initial time in ms
+  let timer; // interval ID
+  let isRunning = false; // tracks if the timer is running 
+  const timerEl = document.getElementById('timerEl');
+  const stopBtn = document.getElementById('pauseBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  // function to update the timer display 
+  function updateTimerDisplay() {
+    const minutes = Math.floor(time_ms / (1000 * 60));
+    const seconds = Math.floor((time_ms % (1000 * 60)) / 1000);
+    const ms = time_ms % 1000;
+    timerEl.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}:${ms.toString().padStart(3, '0')}`;
+  }
+  // start timer function 
+  startBtn.addEventListener('click', ()=>{
+    console.log('START TIMER');
+    isRunning = true;
+    // Intervals of time 
+      timer = setInterval(()=>{
+        //increase time 
+        time_ms += 10;
+        // units of minutes and seconds
+        updateTimerDisplay(); 
+      }, 10)
+  });
 
+  pauseBtn.addEventListener('click', () => {
+    if (isRunning) {
+      console.log('PAUSE TIMER');
+      clearInterval(timer); // stop the timer 
+      isRunning = false;
+    }
+  });
+
+  resetBtn.addEventListener('click', () =>{
+    console.log('RESET TIMER');
+    clearInterval(timer); // stop the timer 
+    time_ms = 0; // reset to 0 
+    isRunning = false; 
+    updateTimerDisplay();
+  })
 
 }
 connectBtn.addEventListener('click', changeConnection);
