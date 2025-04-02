@@ -64,12 +64,24 @@ const changeConnection = function (){
   
   // subscribe to intensity of IR sensor
   intenseTopic.subscribe((ir_msg)=> {
-      let ir_readings = ir_msg['readings'].map((r)=>['value']);
-      //console.log(ir_msg);
+      //let ir_readings = ir_msg['readings'].map((r)=>['value']);
+      // ir_0 = sensor 1 and ir_6 = sensor 7
       let max_value = 3000;
       const ir_0 = Math.round((ir_msg.readings[0].value / max_value) * 100);
       const ir_6 = Math.round((ir_msg.readings[6].value / max_value) * 100);
-      console.log(ir_0, ir_6)
+      //console.log(ir_0, ir_6)
+      // make these similar values to battery text
+      const sensorBar1 = document.getElementById('ir-sensor-1');
+      const sensorBar7 = document.getElementById('ir-sensor-7');
+      const sensorLabel1 = document.getElementById('ir-sensor-1-label');
+      const sensorLabel7 = document.getElementById('ir-sensor-7-label');
+      if (sensorBar1) {
+      sensorBar1.style.height = `${ir_0}px`;
+      sensorBar7.style.height = `${ir_6}px`;
+      sensorLabel1.innerText = `IR Sensor 1: \n${ir_0} %`;
+      sensorLabel7.innerText = `IR Sensor 7: \n${ir_6} %`;
+      }
+
   });
   // make a topic for the cmd_vel to move to robot
   cmdvelTopic = new ROSLIB.Topic({
@@ -125,7 +137,7 @@ const changeConnection = function (){
   left.addEventListener('click', turnLeft);
   right.addEventListener('click', turnRight);
 
-// make a topic for the cmd_vel to move to robot
+// make a topic for the odom to track position
   trackOdomTopic = new ROSLIB.Topic({
       ros: ros,
       name: `/${name}/odom`,
@@ -143,7 +155,7 @@ const changeConnection = function (){
     const z_q = orientation.z;
     const w_q = orientation.w;
 
-    const yaw = Math.atan2(2 * (w_q * z_q + y_q * 0), 1 - 2 * (y_q * y_q + z_q * z_q));
+    const yaw = (Math.atan2(2 * (w_q * z_q + y_q * 0), 1 - 2 * (y_q * y_q + z_q * z_q)))*(180/Math.PI);
 
     valX.textContent = position.x.toFixed(3); // the x value in odom
     valY.textContent = position.y.toFixed(3); // the x value in odom
@@ -151,18 +163,12 @@ const changeConnection = function (){
     valZ.textContent = yaw.toFixed(3); // the x value in odom
 
     // move the robot on the screen
-    const container = document.getElementById('trackContainer');
-    const contWidth = container.offsetWidth;
-    const contHeight = container.offsetHeight;
     const scale = 50;
+    const newX = scale * position.x;
+    const newY = scale * position.y;
 
-    let newX = scale * position.x;
-    let newY = scale * position.y;
-    // Ensure the robot stays within the container's bounds
-    newX = Math.min(Math.max(newX, 0), contWidth - robotEl.offsetWidth); // Limit the x position
-    newY = Math.min(Math.max(newY, 0), contHeight - robotEl.offsetHeight); // Limit the y position
-
-    robotEl.style.transform = `translate(${newX}px, ${newY}px)`;
+    robotEl.style.transform = `translate(${newX}px, ${newY}px) rotate(${yaw - 270}deg)`; // rotation corrects for the image shifting
+    
   });
 
   // starting the timere function
@@ -206,6 +212,32 @@ const changeConnection = function (){
     time_ms = 0; // reset to 0 
     isRunning = false; 
     updateTimerDisplay();
+  })
+
+  // make a topic and publisher that will send the message and go to auto and sends a string 
+  // make a topic mode
+  modeChangeTopic = new ROSLIB.Topic({
+    ros: ros,
+    name: `/${name}/sub_mode`,
+    messageType:'robot_msg'
+    
+  });
+
+  // make a publisher function
+  function changeMode() {
+    // console.log('MODE CHANGED');
+    // publish message 
+    robot_msg = {
+      mode: {
+        mode:false
+      }
+    }
+    modeChangeTopic.publish(robot_msg)
+    console.log(`${robot_msg}`);
+  }
+  autoBtn.addEventListener('click',()=>{
+    console.log('AUTO CLICKED');
+    changeMode();
   })
 
 }

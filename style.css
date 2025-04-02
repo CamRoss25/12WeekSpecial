@@ -12,24 +12,11 @@
 
 #intensityDisplay{
     background-color:aliceblue;
-    width: 50vw;
+    height: auto;
+    width: 80%;
     margin: auto;
-    height: 50vh;
     border: 5px solid black;
     position: relative;
-}
-
-#bufferBox{
-    margin: auto;
-    height: 5vh;
-    position: relative;
-    margin: auto;
-    text-align:center;
-}
-
-#intensityDisplay{
-    position:relative;
-    width: 80%;
     padding: 10px;
     border-radius: 10px;
     display: flex;
@@ -61,19 +48,20 @@ margin-bottom: 15px;
     font-weight: bold;
     margin-bottom: 5px;
     flex: 1;
+    text-align: center;
 }
 
 .sensorBar {
-    width: 20%;
-    height: 100%;
-    background-color: lightgray;
+    background-color: rgb(162, 194, 154);
     transition: width 0.3s ease-in-out;
+    align-items: center;
 
 }
 
 #ir-sensor-1{
     height:30vh;
     width:5vw;
+    align-items: center;
 }
 
 #ir-sensor-7{
@@ -123,6 +111,11 @@ transition: 50ms ease-in;
     font-size: 5em;
 }
 
+#autoBtn{
+    text-align: end;
+    
+}
+
 #trackContainer{
     background-color: white;
     width: 50vw;
@@ -141,6 +134,11 @@ transition: 50ms ease-in;
     margin-bottom: 10px;
     position: relative;
 }
+.roomOrientBoard{
+    background-color: aliceblue;
+    text-align: center;
+    font-family: 'Courier New', Courier, monospace;
+}
 
 .robot {
     width: 10px;
@@ -148,7 +146,8 @@ transition: 50ms ease-in;
     border-radius: 10px;
     position: absolute;
     top: 50%;
-    left: 50%;
+    left: 20%;
+    transform: rotate(90deg);
 }
 
 .container{
