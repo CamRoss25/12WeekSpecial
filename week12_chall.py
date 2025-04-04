@@ -8,7 +8,7 @@ from Star_spangled_banner import star_spangled_banner
 import pygame
 from pprint import pp
 from math import atan2, degrees
-from race import RaceVel
+from race_3 import RaceVel
 
 #initialize pygame and joystics for controll
 pygame.init()
@@ -26,7 +26,7 @@ class RobotController:
         self.ring_colors = ring_colors
 
         # Define the Robot that we want to control
-        self.robot_name = 'bravo'
+        self.robot_name = 'india'
         # create robot topics
         self.control_name = ['cmd_vel', 'cmd_lightring', 'cmd_audio']
         self.topic_types = ['geometry_msgs/Twist', 'irobot_create_msgs/LightringLeds', 'irobot_create_msgs/AudioNoteVector']
@@ -34,8 +34,8 @@ class RobotController:
         self.topics = {}
 
         # create subscribers
-        self.sub_name = ['ir_intensity', 'odom', 'imu']
-        self.sub_types = ['irobot_create_msgs/IrIntensityVector', 'nav_msgs/Odometry',  'sensor_msgs/Imu']
+        self.sub_name = ['ir_intensity', 'odom', 'imu','mode']
+        self.sub_types = ['irobot_create_msgs/IrIntensityVector', 'nav_msgs/Odometry',  'sensor_msgs/Imu','std_msgs/String']
         self.sub_names = [f'/{self.robot_name}/{c}' for c in self.sub_name]
         self.subs = {}
 
@@ -64,6 +64,7 @@ class RobotController:
         self.light_cmd = None
         self.sound_cmd  = None
         self.color_butt = 0
+        self.mode_msg = None
 
 
         # initialize starting values
@@ -260,6 +261,20 @@ class RobotController:
         self.yaw_deg = degrees(yaw)
         return(self.yaw_deg)
     
+    def clbk_mode(self, msg):
+        mode_msg = msg.get('data')
+        if mode_msg == 'AUTO':
+            self.manual = False
+            self.light_cmd = self.ring_colors[2]
+            self.color_butt = 1
+            print('\n Robot is in Autonomous Mode')
+        elif mode_msg == 'MANUAL':
+            self.manual = True
+            self.light_cmd = self.ring_colors[3]
+            self.color_butt = 1
+            print('\n Robot is in Manual Mode')
+        return(self.manual)
+    
     def reset_pose(self):
         reset_odom_service = roslibpy.Service(self.ros, f'/{self.robot_name}/reset_pose', 'irobot_create_msgs/ResetPose')
         reset_odom_service.call(roslibpy.ServiceRequest())
@@ -277,16 +292,19 @@ class RobotController:
             callback_name = 'clbk_' + sub_name
             self.subs[sub_var_name] = roslibpy.Topic(self.ros, f'/{self.robot_name}/{sub_name}', self.sub_types[self.sub_name.index(sub_name)])
             self.subs[sub_var_name].subscribe(getattr(self, callback_name))
+            print(f"Subscribed to {sub_var_name} with callback {callback_name}")
         print("Subscribers Created")
-
-    def show_subs(self):
-        print(f'IR: {self.ir_values}')
-        print(f'Odom: {self.odom_values_round}')
-        print(f'IMU: {round(self.yaw_deg, 2)}')
-        print(f'Vel MSG:: {self.vel_msg}')
+    
+    def show_subs(self):        
+        #print(f'IR: {self.ir_values}') 
+        #print(f'Odom: {self.odom_values_round}')
+        #print(f'IMU: {round(self.yaw_deg, 2)}')
+        #print(f'Vel MSG:: {self.vel_msg}')
+        print(f'MODE: {self.manual}')
         sleep(.1)
 
         # start the threads function
+   
     def start_threads(self):
         """This method starts our thread"""
         print(f'Starting {len(self.threads)} threads!')

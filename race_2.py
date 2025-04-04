@@ -5,23 +5,27 @@ class RaceVel:
 
     def __init__(self, robot):
         # Initialize PID constants and other parameters
-        self.head_kp = 0.0045        # Heading Proportional gain
-        self.head_ki = 0.0001      # Heading Integral gain
-        self.head_kd = 0.0025         # Heading Derivative gain
+        self.head_kp = 0.001        # Heading Proportional gain
+        self.head_ki = 0.00      # Heading Integral gain
+        self.head_kd = 0.00         # Heading Derivative gain
         self.head_prev_error = 0.0  # Previous heading error for derivative term
         self.head_integral = 0.0    # Integral heading sum
         self.desired_heading = 0
         self.head_error = 1
         self.robot = robot
-        self.scale_factors = [5,3,2,1,2,3,5]
-        self.primary_sensor = 2
 
-        self.vel_kp = .3            # Velocity Proportional gain
-        self.vel_ki = 0.002         # Velocity Integral gain
-        self.vel_kd = 0.05          # Velocity Derivative gain
+        self.vel_kp = 0.2           # Velocity Proportional gain
+        self.vel_ki = 0.002           # Velocity Integral gain
+        self.vel_kd = 0.08           # Velocity Derivative gain
         self.vel_prev_error = 0.0   # Previous velocity error for derivative term
         self.vel_integral = 0.0     # Integral velocity sum
         
+        self.ir_values_0 = [0,0,0,0,0,0,0]
+        self.ir_values_1 = [0,0,0,0,0,0,0]
+        self.ir_values_2 = [0,0,0,0,0,0,0]
+        self.ir_values_3 = [0,0,0,0,0,0,0]
+        self.ir_values_4 = [0,0,0,0,0,0,0]
+        self.scale_factors = [5,3,2,1,2,3,5]
 
         self.head_max_output = 2  # Maximum allowable heading output
         self.head_min_output = -2 # Minimum allowable heading output
@@ -43,40 +47,31 @@ class RaceVel:
         self.ir_prev_error = 0
 
         self.ir_values = robot.ir_values
-        self.ir_values_0 = [0,0,0,0,0,0,0]
-        self.ir_values_1 = [0,0,0,0,0,0,0]
-        self.ir_values_2 = [0,0,0,0,0,0,0]
-        self.ir_values_3 = [0,0,0,0,0,0,0]
-        self.ir_values_4 = [0,0,0,0,0,0,0]
-
         self.ir_call = robot.ir_call
 
     def turn_compute(self, ir_call):
-        
         ir_prev_error = self.ir_prev_error
 
-        desired_IR = 1000
-
         # Compute the desired heading based on the current position and the desired position
-        current_ir = self.ir_values
+        current_sense = self.ir_values
+        scale_factor =  self.scale_factors
         # print(f"Current Position: [{round(current_pos[0], 2)}, {round(current_pos[1], 2)}]")
         # print(f"Current Heading : {round(current_heading, 2)}")
 
         #current_left = current_far_left
+        #current_left  = (current_sense[0] + current_sense[1] + current_sense[2]) / 3
+        #current_right = (current_sense[4] + current_sense[5] + current_sense[6]) / 3
+        current_left  = ((current_sense[0] * scale_factor[0]) + (current_sense[1] * scale_factor[1]) + (current_sense[2] * scale_factor[2])) / 3
+        current_right = ((current_sense[4] * scale_factor[4]) + (current_sense[5] * scale_factor[5]) + (current_sense[6] * scale_factor[6])) / 3
+        desired_IR = 100
 
-        
-        current_left = (current_ir[0] + current_ir[1] + current_ir[2]) / 3
-        #current_left  = ((current_ir[0] * self.scale_factors[0]) + (current_ir[1] * self.scale_factors[1]) + (current_ir[2] * self.scale_factors[2])) / 3
-        current_right = (current_ir[4] + current_ir[5] + current_ir[6]) / 3
-
-        self.primary_sensor = current_ir.index(max(current_ir))
-        if self.primary_sensor == 0 or self.primary_sensor == 1 or self.primary_sensor == 2:
+        dominant_ir = current_sense.index(max(current_sense))
+        if dominant_ir == 0 or dominant_ir == 1 or dominant_ir == 2:
             ir_call = -1
-        if self.primary_sensor == 4 or self.primary_sensor == 5 or self.primary_sensor == 6:  
-            ir_call = 1 
+        elif dominant_ir == 4 or dominant_ir == 5 or dominant_ir == 6:
+            ir_call = 1
         else:
             ir_call = 0
-
 
         # Switch between left and right wall following control
         if ir_call == -1:
@@ -105,9 +100,11 @@ class RaceVel:
         # restrict the output to the defined bounds
 
         output = round(max(self.head_min_output, min(self.head_max_output, output)), 2)
-
-        if self.current_velocity > 0.29:
-            output = 0
+        
+        if output >= 1 or output <= -1:
+            self.turning = True
+        else:
+            self.turning = False
 
         return output
     
@@ -154,7 +151,7 @@ class RaceVel:
         # Clamp the output to the defined bounds
         output = round(max(self.vel_min_output, min(self.vel_max_output, output)), 2)
         if output < .01:
-            output = 0.05
+            output = 0.01
 
         self.current_velocity = output
 
@@ -185,5 +182,5 @@ class RaceVel:
 
         msg = {'linear': {'x': self.x_vel, 'y': 0.0, 'z': 0.0},
                     'angular': {'x': 0.0, 'y': 0.0, 'z': self.turn_vel}}
-        return msg 
+        return msg
                             
