@@ -163,9 +163,9 @@ const changeConnection = function (){
     valZ.textContent = yaw.toFixed(3); // the x value in odom
 
     // move the robot on the screen
-    const scale = 50;
-    const newX = scale * position.x * -1;
-    const newY = scale * position.y * -1;
+    const scale = 10;
+    const newX = scale * position.x;
+    const newY = scale * position.y;
 
     robotEl.style.transform = `translate(${newX}px, ${newY}px) rotate(${yaw - 270}deg)`; // rotation corrects for the image shifting
     
@@ -219,25 +219,39 @@ const changeConnection = function (){
   modeChangeTopic = new ROSLIB.Topic({
     ros: ros,
     name: `/${name}/mode`,
-    messageType:'robot_msgs/Mode'
+    messageType:'std_msgs/String'
     
   });
 
-  // make a publisher function
-  function changeMode() {
-    // console.log('MODE CHANGED');
+  // make a publisher function to publish the mode option
+  function changeModeAuto() {
+    console.log('MODE CHANGED');
     // publish message 
-    robot_msg = {
-      mode: {
-        mode:false
-      }
-    }
-    modeChangeTopic.publish(robot_msg)
-    console.log(`${robot_msg}`);
+    const msg = {
+      data: 'AUTO'
+    };
+    modeChangeTopic.publish(msg)
+    console.log(`PUBLISHED: ${msg.data}`);
   }
   autoBtn.addEventListener('click',()=>{
     console.log('AUTO CLICKED');
-    changeMode();
+    changeModeAuto();
+  })
+
+  // manual mode 
+  // make a publisher function to publish the mode option
+  function changeModeMan() {
+    console.log('MODE CHANGED');
+    // publish message 
+    const msg = {
+      data: 'MANUAL'
+    };
+    modeChangeTopic.publish(msg)
+    console.log(`PUBLISHED: ${msg.data}`);
+  }
+  manualBtn.addEventListener('click',()=>{
+    console.log('MANUAL CLICKED');
+    changeModeMan();
   })
 
 }
