@@ -164,8 +164,8 @@ const changeConnection = function (){
 
     // move the robot on the screen
     const scale = 50;
-    const newX = scale * position.x;
-    const newY = scale * position.y;
+    const newX = scale * position.x * -1;
+    const newY = scale * position.y * -1;
 
     robotEl.style.transform = `translate(${newX}px, ${newY}px) rotate(${yaw - 270}deg)`; // rotation corrects for the image shifting
     
@@ -218,8 +218,8 @@ const changeConnection = function (){
   // make a topic mode
   modeChangeTopic = new ROSLIB.Topic({
     ros: ros,
-    name: `/${name}/sub_mode`,
-    messageType:'robot_msg'
+    name: `/${name}/mode`,
+    messageType:'robot_msgs/Mode'
     
   });
 
