@@ -64,12 +64,24 @@ const changeConnection = function (){
   
   // subscribe to intensity of IR sensor
   intenseTopic.subscribe((ir_msg)=> {
-      let ir_readings = ir_msg['readings'].map((r)=>['value']);
-      //console.log(ir_msg);
+      //let ir_readings = ir_msg['readings'].map((r)=>['value']);
+      // ir_0 = sensor 1 and ir_6 = sensor 7
       let max_value = 3000;
       const ir_0 = Math.round((ir_msg.readings[0].value / max_value) * 100);
       const ir_6 = Math.round((ir_msg.readings[6].value / max_value) * 100);
-      console.log(ir_0, ir_6)
+      //console.log(ir_0, ir_6)
+      // make these similar values to battery text
+      const sensorBar1 = document.getElementById('ir-sensor-1');
+      const sensorBar7 = document.getElementById('ir-sensor-7');
+      const sensorLabel1 = document.getElementById('ir-sensor-1-label');
+      const sensorLabel7 = document.getElementById('ir-sensor-7-label');
+      if (sensorBar1) {
+      sensorBar1.style.height = `${ir_0}px`;
+      sensorBar7.style.height = `${ir_6}px`;
+      sensorLabel1.innerText = `IR Sensor 1: \n${ir_0} %`;
+      sensorLabel7.innerText = `IR Sensor 7: \n${ir_6} %`;
+      }
+
   });
   // make a topic for the cmd_vel to move to robot
   cmdvelTopic = new ROSLIB.Topic({
@@ -125,7 +137,7 @@ const changeConnection = function (){
   left.addEventListener('click', turnLeft);
   right.addEventListener('click', turnRight);
 
-// make a topic for the cmd_vel to move to robot
+// make a topic for the odom to track position
   trackOdomTopic = new ROSLIB.Topic({
       ros: ros,
       name: `/${name}/odom`,
@@ -143,15 +155,104 @@ const changeConnection = function (){
     const z_q = orientation.z;
     const w_q = orientation.w;
 
-    const yaw = Math.atan2(2 * (w_q * z_q + y_q * 0), 1 - 2 * (y_q * y_q + z_q * z_q));
+    const yaw = (Math.atan2(2 * (w_q * z_q + y_q * 0), 1 - 2 * (y_q * y_q + z_q * z_q)))*(180/Math.PI);
 
     valX.textContent = position.x.toFixed(3); // the x value in odom
     valY.textContent = position.y.toFixed(3); // the x value in odom
     
     valZ.textContent = yaw.toFixed(3); // the x value in odom
+
+    // move the robot on the screen
+    const scale = 10;
+    const newX = scale * position.x;
+    const newY = scale * position.y;
+
+    robotEl.style.transform = `translate(${newX}px, ${newY}px) rotate(${yaw - 270}deg)`; // rotation corrects for the image shifting
+    
+  });
+
+  // starting the timere function
+  let time_ms = 0; // initial time in ms
+  let timer; // interval ID
+  let isRunning = false; // tracks if the timer is running 
+  const timerEl = document.getElementById('timerEl');
+  const stopBtn = document.getElementById('pauseBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  // function to update the timer display 
+  function updateTimerDisplay() {
+    const minutes = Math.floor(time_ms / (1000 * 60));
+    const seconds = Math.floor((time_ms % (1000 * 60)) / 1000);
+    const ms = time_ms % 1000;
+    timerEl.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}:${ms.toString().padStart(3, '0')}`;
+  }
+  // start timer function 
+  startBtn.addEventListener('click', ()=>{
+    console.log('START TIMER');
+    isRunning = true;
+    // Intervals of time 
+      timer = setInterval(()=>{
+        //increase time 
+        time_ms += 10;
+        // units of minutes and seconds
+        updateTimerDisplay(); 
+      }, 10)
+  });
+
+  stopBtn.addEventListener('click', () => {
+    if (isRunning) {
+      console.log('PAUSE TIMER');
+      clearInterval(timer); // stop the timer 
+      isRunning = false;
+    }
+  });
+
+  resetBtn.addEventListener('click', () =>{
+    console.log('RESET TIMER');
+    clearInterval(timer); // stop the timer 
+    time_ms = 0; // reset to 0 
+    isRunning = false; 
+    updateTimerDisplay();
   })
 
+  // make a topic and publisher that will send the message and go to auto and sends a string 
+  // make a topic mode
+  modeChangeTopic = new ROSLIB.Topic({
+    ros: ros,
+    name: `/${name}/mode`,
+    messageType:'std_msgs/String'
+    
+  });
 
+  // make a publisher function to publish the mode option
+  function changeModeAuto() {
+    console.log('MODE CHANGED');
+    // publish message 
+    const msg = {
+      data: 'AUTO'
+    };
+    modeChangeTopic.publish(msg)
+    console.log(`PUBLISHED: ${msg.data}`);
+  }
+  autoBtn.addEventListener('click',()=>{
+    console.log('AUTO CLICKED');
+    changeModeAuto();
+  })
+
+  // manual mode 
+  // make a publisher function to publish the mode option
+  function changeModeMan() {
+    console.log('MODE CHANGED');
+    // publish message 
+    const msg = {
+      data: 'MANUAL'
+    };
+    modeChangeTopic.publish(msg)
+    console.log(`PUBLISHED: ${msg.data}`);
+  }
+  manualBtn.addEventListener('click',()=>{
+    console.log('MANUAL CLICKED');
+    changeModeMan();
+  })
 
 }
 connectBtn.addEventListener('click', changeConnection);
