@@ -175,6 +175,7 @@ class RobotController:
 
         while not self.stop:
             if self.armed == True:
+                # If the robot is in manual mode, we will use the joystick to control the robot
                 if self.manual == True:
                     if self.x_cmd or self.turn_cmd != 0:
                         x_vel = round((self.x_cmd / 3), 1)* -1.5
@@ -185,11 +186,12 @@ class RobotController:
                         sleep(0.1)
                         self.topics['topic_cmd_vel'].publish(msg)
                         # print(f"{msg}")
+                # if the bot is in autonomous mode, we will use the velocity controller to control the robot
                 else:
                     self.vel_msg = self.velcon.vel_msg(self)
                     self.topics['topic_cmd_vel'].publish(self.vel_msg)
                     sleep(0.05)
-                                       
+            # if the robot is not armed, we will stop the robot                         
             else:
                 msg = {'linear': {'x': 0, 'y': 0.0, 'z': 0.0},
                                     'angular': {'x': 0.0, 'y': 0.0, 'z': 0}}
@@ -285,16 +287,17 @@ class RobotController:
         for i in range(len(self.control_name)):
             self.topics['topic_'+ self.control_name[i]] = roslibpy.Topic(self.ros, self.topic_names[i], self.topic_types[i])
         print("Topics Created")
-
+    # this function creates the subscribers for the robot
     def create_subs(self):
         for sub_name in self.sub_name:
             sub_var_name = 'sub_' + sub_name
             callback_name = 'clbk_' + sub_name
+            # for each subscriber, create a new topic and subscribe to it
             self.subs[sub_var_name] = roslibpy.Topic(self.ros, f'/{self.robot_name}/{sub_name}', self.sub_types[self.sub_name.index(sub_name)])
             self.subs[sub_var_name].subscribe(getattr(self, callback_name))
             print(f"Subscribed to {sub_var_name} with callback {callback_name}")
         print("Subscribers Created")
-    
+    # This function is used to show the values of the robot every time the alt button is pressed
     def show_subs(self):        
         #print(f'IR: {self.ir_values}') 
         #print(f'Odom: {self.odom_values_round}')
@@ -302,14 +305,11 @@ class RobotController:
         #print(f'Vel MSG:: {self.vel_msg}')
         print(f'MODE: {self.manual}')
         sleep(.1)
-
-        # start the threads function
-   
+    # start the threads function
     def start_threads(self):
         """This method starts our thread"""
         print(f'Starting {len(self.threads)} threads!')
         [t.start() for t in self.threads]
-
     # end the threads function
     def end_threads(self):
         """This ends / joins all of our threads"""
