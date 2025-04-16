@@ -1,7 +1,7 @@
 //<!-- Goals:
 //1) Input for a robot name that defines the topic/robot name you are monitoring
 //2) A connect button to initiate the rosbridge connection (192.168.8.104 port 9012)
-//3) Follow the path of a robot, I want it to make dots on a map or the path 
+//3) Follow the path of a robot, I want it to make dots on a map or the path - this did not happen but the robot displays, yay
 //4) The robot will move while a controller is controlling its movements
 //--> 
 
@@ -91,7 +91,7 @@ const changeConnection = function (){
     
   });
 
-  // make a publisher function
+  // make a publisher function to move forward
   function moveFwd() {
     console.log('FWD BUTTON PRESSED');
     // publish message 
@@ -103,7 +103,7 @@ const changeConnection = function (){
     cmdvelTopic.publish(twistMsg)
   }
 
-  // make a publisher function
+  // make a publisher function to turn left
   function turnLeft() {
     console.log('LEFT BUTTON PRESSED');
     // publish message 
@@ -115,7 +115,7 @@ const changeConnection = function (){
     cmdvelTopic.publish(twistMsg)
   }
 
-  // make a publisher function
+  // make a publisher function to turn right
   function turnRight() {
     console.log('RIGHT BUTTON PRESSED');
     // publish message 
@@ -185,34 +185,6 @@ const changeConnection = function (){
     const ms = time_ms % 1000;
     timerEl.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}:${ms.toString().padStart(3, '0')}`;
   }
-  // start timer function 
-  startBtn.addEventListener('click', ()=>{
-    console.log('START TIMER');
-    isRunning = true;
-    // Intervals of time 
-      timer = setInterval(()=>{
-        //increase time 
-        time_ms += 10;
-        // units of minutes and seconds
-        updateTimerDisplay(); 
-      }, 10)
-  });
-
-  stopBtn.addEventListener('click', () => {
-    if (isRunning) {
-      console.log('PAUSE TIMER');
-      clearInterval(timer); // stop the timer 
-      isRunning = false;
-    }
-  });
-
-  resetBtn.addEventListener('click', () =>{
-    console.log('RESET TIMER');
-    clearInterval(timer); // stop the timer 
-    time_ms = 0; // reset to 0 
-    isRunning = false; 
-    updateTimerDisplay();
-  })
 
   // make a topic and publisher that will send the message and go to auto and sends a string 
   // make a topic mode
@@ -254,6 +226,39 @@ const changeConnection = function (){
     changeModeMan();
   })
 
+  // start timer function 
+  startBtn.addEventListener('click', ()=>{
+    console.log('START TIMER');
+    isRunning = true;
+    // Intervals of time 
+      timer = setInterval(()=>{
+        //increase time 
+        time_ms += 10;
+        // units of minutes and seconds
+        updateTimerDisplay(); 
+      }, 10)
+    changeModeAuto();
+  });
+  // This will pause the timer
+  stopBtn.addEventListener('click', () => {
+    if (isRunning) {
+      console.log('PAUSE TIMER');
+      clearInterval(timer); // stop the timer 
+      isRunning = false;
+    }
+    changeModeMan();
+  });
+  // This is the reset timer button
+  resetBtn.addEventListener('click', () =>{
+    console.log('RESET TIMER');
+    clearInterval(timer); // stop the timer 
+    time_ms = 0; // reset to 0 
+    isRunning = false; 
+    updateTimerDisplay();
+    changeModeMan();
+  });
+
 }
+// none of this code starts until the connect button is pressed
 connectBtn.addEventListener('click', changeConnection);
 
