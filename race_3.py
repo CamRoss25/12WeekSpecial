@@ -5,12 +5,12 @@ class RaceVel:
 
     def __init__(self, robot):
         # Initialize PID constants and other parameters
-        self.head_kp = 0.0045        # Heading Proportional gain
-        self.head_ki = 0.0001      # Heading Integral gain
-        self.head_kd = 0.0025         # Heading Derivative gain
+        self.head_kp = 0.0045       # Heading Proportional gain
+        self.head_ki = 0.000        # Heading Integral gain
+        self.head_kd = 0.0005       # Heading Derivative gain
         self.head_prev_error = 0.0  # Previous heading error for derivative term
         self.head_integral = 0.0    # Integral heading sum
-        self.desired_heading = 0
+        self.desired_heading = 0    
         self.head_error = 1
         self.robot = robot
         self.scale_factors = [5,3,2,1,2,3,5]
@@ -21,17 +21,17 @@ class RaceVel:
         self.vel_kd = 0.05          # Velocity Derivative gain
         self.vel_prev_error = 0.0   # Previous velocity error for derivative term
         self.vel_integral = 0.0     # Integral velocity sum
-        
 
-        self.head_max_output = 2  # Maximum allowable heading output
-        self.head_min_output = -2 # Minimum allowable heading output
-        self.vel_turn_max_output = 0.1
-        self.vel_max_output = 0.3
-        self.vel_min_output = -0.3
 
-        self.start = True
-        self.time = False
-        self.start_time = time()
+        self.head_max_output = .5   # Maximum allowable heading output
+        self.head_min_output = -.5  # Minimum allowable heading output
+        self.vel_turn_max_output = 0.1 # Maximum allowable velocity output while robot is turning
+        self.vel_max_output = 0.3  # Maximum allowable velocity output
+        self.vel_min_output = -0.3  # Minimum allowable velocity output
+
+        self.start = True        # Flag to indicate if the robot is starting
+        self.time = False        # Flag to indicate if the robot is in motion
+        self.start_time = time() # Start time for the robot
 
         # Initialize Values
         self.x_vel = 0
@@ -52,31 +52,21 @@ class RaceVel:
         self.ir_call = robot.ir_call
 
     def turn_compute(self, ir_call):
-        
         ir_prev_error = self.ir_prev_error
 
-        desired_IR = 1000
-
         # Compute the desired heading based on the current position and the desired position
-        current_ir = self.ir_values
+        current_sense = self.ir_values
         # print(f"Current Position: [{round(current_pos[0], 2)}, {round(current_pos[1], 2)}]")
         # print(f"Current Heading : {round(current_heading, 2)}")
 
+
+        current_far_left, current_mid_left, current_front_left, current_front_right, current_mid_right, current_far_right = current_sense[0], current_sense[1], current_sense[2], current_sense[4], current_sense[5],  current_sense[6]
+
         #current_left = current_far_left
+        current_left = max(current_far_left, current_mid_left, current_front_left)
+        current_right = max(current_mid_right, current_far_right, current_front_right)
 
-        
-        current_left = (current_ir[0] + current_ir[1] + current_ir[2]) / 3
-        #current_left  = ((current_ir[0] * self.scale_factors[0]) + (current_ir[1] * self.scale_factors[1]) + (current_ir[2] * self.scale_factors[2])) / 3
-        current_right = (current_ir[4] + current_ir[5] + current_ir[6]) / 3
-
-        self.primary_sensor = current_ir.index(max(current_ir))
-        if self.primary_sensor == 0 or self.primary_sensor == 1 or self.primary_sensor == 2:
-            ir_call = -1
-        if self.primary_sensor == 4 or self.primary_sensor == 5 or self.primary_sensor == 6:  
-            ir_call = 1 
-        else:
-            ir_call = 0
-
+        desired_IR = 100
 
         # Switch between left and right wall following control
         if ir_call == -1:
@@ -105,12 +95,17 @@ class RaceVel:
         # restrict the output to the defined bounds
 
         output = round(max(self.head_min_output, min(self.head_max_output, output)), 2)
-
-        if self.current_velocity > 0.29:
-            output = 0
+        
+        # Signal if the robot is turning
+        if output >= 1 or output <= -1:
+            self.turning = True
+        else:
+            self.turning = False
 
         return output
     
+
+    # This function computes the velocity of the robot based on the IR sensor values and PID control
     def velocity_compute(self):
 
         ir_desired = 75
@@ -154,12 +149,13 @@ class RaceVel:
         # Clamp the output to the defined bounds
         output = round(max(self.vel_min_output, min(self.vel_max_output, output)), 2)
         if output < .01:
-            output = 0.05
+            output = 0.01
 
         self.current_velocity = output
 
         return output
     
+    # this function updates the robot's current status
     def update_robot(self, robot):
         # get the robots current status
         self.current_heading = robot.yaw_deg
@@ -175,6 +171,7 @@ class RaceVel:
         list_avg = [sum(x)/len(x) for x in zip(self.ir_values_4, self.ir_values_3, self.ir_values_2, self.ir_values_1, self.ir_values_0)]
         self.ir_values = list_avg
 
+    # This function is called to publish the velocity message to the robot
     def vel_msg(self, robot):
         """This publishes a velocity message to our robot"""
 
@@ -185,5 +182,5 @@ class RaceVel:
 
         msg = {'linear': {'x': self.x_vel, 'y': 0.0, 'z': 0.0},
                     'angular': {'x': 0.0, 'y': 0.0, 'z': self.turn_vel}}
-        return msg 
+        return msg
                             
