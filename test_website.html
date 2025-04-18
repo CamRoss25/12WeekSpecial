@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+    <link rel="stylesheet" href="style.css">
+<body>
+    <div id = "controlPanel">
+        <!--This is the title control panel-->
+        <h1 id="title">Vehicle Interface</h1>
+        <!--This is the button and the enter robot value into it-->
+        <input type="text" id ='inputVal' value="india" placeholder = "Enter Robot Name" />
+        <input class="styled" type="button" value="Connect" id="connectBtn"/>
+
+        <section>
+            <!--This has the main buttons and arrow buttons-->
+            <h2 class="connectionStatus" id="connectStat">Disconnected</h2>
+            <p> Battery: <strong id = "battVolt"> 0 </strong> </p> 
+            <!--This container has the direction buttons-->
+            <div class="btnContainer flexContainer">
+              <button class="directionButton" id="left">⬅️ </button>
+              <button class="directionButton" id="up">⬆️</button>
+              <button class="directionButton" id="right">➡️</button>
+            </div>
+            <!--This container has the X,Y,Z Values-->
+            <div class="container">
+              <p>X: <strong class="flexItem" id="valX">0</strong></p>
+              <p>Y: <strong class="flexItem" id="valY">0</strong></p>
+              <p>Yaw: <strong class="flexItem" id="valZ">0</strong></p>
+            </div>
+        </section>
+    </div>
+    
+    <div id="intensityDisplay">
+      <!-- IR Sensor Bars -->
+      <div class="sensorContainer1">
+        <div class="sensorLabel" id="ir-sensor-1-label">IR Sensor 1</div>
+        <div class="sensorBar" id="ir-sensor-1"></div>
+      </div>
+      <div class = "track_senseBox" id = 'trackContainer'>
+        <div> 
+          <h4 class="roomOrientBoard">Board</h4>
+          <img class = 'robot' id="robotEl" src = "create3.png" alt = "create3 Robot" style="width:50px; height:30px;"/>
+          
+        </div>
+      </div>
+      <div class = "sensorContainer2">
+        <div class="sensorLabel" id="ir-sensor-7-label">IR Sensor 7</div>
+        <div class="sensorBar" id="ir-sensor-7"></div>
+      </div>
+    </div>
+
+    <div class = "flex" id = "timerBox">
+      <h3 id="timerEl">00:00:00</h3>
+      <button class = 'timerBtns' id = 'manualBtn'>MANUAL</button>
+      <button class = 'timerBtns' id = "pauseBtn">⏸️</button>
+      <button class = 'timerBtns' id = "startBtn">⏱️</button>
+      <button class = 'timerBtns' id = "resetBtn">🔄</button>
+      <button class = 'timerBtns' id = 'autoBtn'>AUTO</button>
+    </div>
+   
+</body>
+
+
+<script src="roslibjs.js"></script>
+<script src="index.js"></script>
+</html>
