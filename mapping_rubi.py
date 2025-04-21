@@ -17,7 +17,7 @@ from math import atan2, degrees
 client = roslibpy.Ros(host='192.168.8.104', port=9012)
 client.run()
 
-robot_name = 'juliet'
+robot_name = 'foxtrot'
 # Create the topic
 topic = roslibpy.Topic(client, f'/{robot_name}/mapper', 'nav_msgs/OccupancyGrid')
 
