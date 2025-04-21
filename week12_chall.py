@@ -26,7 +26,7 @@ class RobotController:
         self.ring_colors = ring_colors
 
         # Define the Robot that we want to control
-        self.robot_name = 'india'
+        self.robot_name = 'foxtrot'
         # create robot topics
         self.control_name = ['cmd_vel', 'cmd_lightring', 'cmd_audio']
         self.topic_types = ['geometry_msgs/Twist', 'irobot_create_msgs/LightringLeds', 'irobot_create_msgs/AudioNoteVector']

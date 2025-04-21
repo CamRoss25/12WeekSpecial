@@ -80,6 +80,7 @@ class RobotController:
         self.angle_max = 0
         self.angle_increment = 0
         self.room_made = 0
+        self.room_map = []
 
         self.velcon = RaceVel(self)
 
@@ -243,68 +244,65 @@ class RobotController:
 
     
     def make_grid(self):
-        """This creates a grid message for our robot"""
-        # initialize base variables
+        """Creates an occupancy grid map from LiDAR data"""
         ranges = self.ranges
         angle_min = self.angle_min
         angle_increment = self.angle_increment
 
-        # Define a simple 10x10 grid with a diagonal wall
         width, height = 100, 50
-        resolution = .1 # each cell is 0.1m x 0.1m
-        data = [[0 for _ in range(width)] for _ in range(height)]
+        resolution = 0.1
         center = [width // 2, height // 2]
-        # print(f"Center: {center}")
 
         if self.room_made == 0:
             self.room_made = 1
             self.room_map = [[-1 for _ in range(width)] for _ in range(height)]
             print("Room Map Created")
         
+        data = [[0 for _ in range(width)] for _ in range(height)]
         room_map = self.room_map
 
-        # Make a relationship between the distance rad by the sensor and the square of the grid
         for i in range(len(ranges)):
             angle_rad = angle_min + i * angle_increment
-            #angle = (angle_rad/3.14)*180  # Convert to deg
-            # Adjust angle of sensor based on angle of robot
-            angle_rad_act = angle_rad + self.yaw_deg * (3.1415926536 / 180)
-
             distance = ranges[i]
-            if distance == 0: # if the distance is 0, we will not add it to the grid
-                continue
 
-            if distance != 0.0:
-                y_dist = distance * np.cos(angle_rad_act)
-                x_dist = distance * np.sin(angle_rad_act)
-                grid_x = int(round(x_dist / resolution, 0)) #* 100 // 1
-                grid_y = int(round(y_dist / resolution, 0)) #* 100 // 1
-                # adjust grid values based on odemetry of the robot
-                grid_x = int(grid_x + self.odom_values[0] / resolution) #* 100 // 1
-                grid_y = int(grid_y + self.odom_values[1] / resolution) #* 100 // 1
+            if distance == 0.0 or np.isnan(distance):
+                continue  # Skip invalid readings
 
-                #print(grid_x, grid_y)
-            # print(f"Angle: {angle}, Distance: {distance}, X: {x_dist}, Y: {y_dist}, Grid X: {grid_x}, Grid Y: {grid_y}")
-                if abs(grid_x) < width // 2 and abs(grid_y) < height // 2:
-                    # Set the cell to occupied (1)
-                    # print(f"Grid X: {grid_x}, Grid Y: {grid_y}")
-                    # print(f"Center: {center}")
-                    # print(f"Data: {data[int(grid_y+center[1])][int(grid_x+center[0])] }")
-                    data[grid_y + center[1]][grid_x + center[0]] += 1
-        
+            # Convert polar to cartesian
+            angle_rad_act = angle_rad + self.yaw_deg * (np.pi / 180.0)
+            y_dist = distance * np.cos(angle_rad_act)
+            x_dist = distance * np.sin(angle_rad_act)
+
+            # Translate to map coordinates using odometry
+            robot_x, robot_y = self.odom_values[0], self.odom_values[1]
+            x_global = x_dist + robot_x
+            y_global = y_dist + robot_y
+
+            grid_x = int(round(x_global / resolution))
+            grid_y = int(round(y_global / resolution))
+
+            map_x = grid_x + center[0]
+            map_y = grid_y + center[1]
+
+            # Safety bounds check
+            if 0 <= map_x < width and 0 <= map_y < height:
+                data[map_y][map_x] += 1  # Mark as occupied
+
+        # Merge this frame into the global map
         data_array = np.array(data)
         room_array = np.array(room_map)
-        self.room_map = data_array + room_array
-        self.room_map = self.room_map.tolist()
-        data = self.room_map
 
-        # Convert the matrix to a list
-        data_list = [element for row in data for element in row]
-        # Create the occupancy grid message
+        # Max to accumulate hits (you could also average or count)
+        updated_map = np.maximum(data_array, room_array)
+        self.room_map = updated_map.tolist()
+
+        data_list = [cell for row in self.room_map for cell in row]
+
         self.grid_array = {
             'header': {
                 'frame_id': 'map',
-                'stamp': {'secs': int(time()), 'nsecs': 0}},
+                'stamp': {'secs': int(time()), 'nsecs': 0}
+            },
             'info': {
                 'map_load_time': {'secs': int(time()), 'nsecs': 0},
                 'resolution': resolution,
@@ -312,10 +310,13 @@ class RobotController:
                 'height': height,
                 'origin': {
                     'position': {'x': 0.0, 'y': 0.0, 'z': 0.0},
-                    'orientation': {'x': 0.0, 'y': 0.0, 'z': 0.0, 'w': 1.0}}},
-            'data': data_list}
-        
-        return(self.grid_array)    
+                    'orientation': {'x': 0.0, 'y': 0.0, 'z': 0.0, 'w': 1.0}
+                }
+            },
+            'data': data_list
+        }
+
+        return self.grid_array 
     
     def grid_msg(self):
         while not self.stop:
@@ -331,7 +332,6 @@ class RobotController:
         self.angle_increment = msg['angle_increment']
         self.ranges = msg['ranges']
         return(self.ranges, self.angle_min, self.angle_max, self.angle_increment)
-    
     def reset_map(self):
         self.room_map = [[-1 for _ in range(100)] for _ in range(50)]
         print("Room Map Reset")
@@ -383,7 +383,6 @@ class RobotController:
     def reset_pose(self):
         reset_odom_service = roslibpy.Service(self.ros, f'/{self.robot_name}/reset_pose', 'irobot_create_msgs/ResetPose')
         reset_odom_service.call(roslibpy.ServiceRequest())
-        self.reset_map()
         print("Pose Reset")
 
     # this function helps to create the topics for the robot
@@ -432,7 +431,6 @@ class RobotController:
     def run_loop(self):
         self.create_subs()
         self.create_topics()
-        # self.reset_pose()
         self.start_threads()
 
 

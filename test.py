@@ -317,7 +317,7 @@ class RobotController:
         while not self.stop:
             """This publishes a grid message to our robot"""
             self.topics['topic_map'].publish(roslibpy.Message(self.make_grid()))
-            print(f"Publishing occupancy grid on {self.robot_name}")
+            # print(f"Publishing occupancy grid on {self.robot_name}")
             sleep(.1)  # Publish at 10 Hz       
 
     def clbk_scan(self, msg):
