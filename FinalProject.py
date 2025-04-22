@@ -205,7 +205,6 @@ class RobotController:
                                     'angular': {'x': 0.0, 'y': 0.0, 'z': 0}}
                 self.topics['topic_cmd_vel'].publish(msg)
                 sleep(0.1)
-                
     
     # light controll message for the robot
     def light_msg(self):
@@ -248,11 +247,17 @@ class RobotController:
         grid_width = 200
         grid_height = 200
         resolution = 0.05
-        occupancy_grid = [-1] * (grid_width * grid_height)
 
+        
+        if self.room_made == 0:
+            self.room_made = 1
+            occupancy_grid = [-1] * (grid_width * grid_height)
+            robot_pos = [0.0, 0.0]  # x, y position of the robot
+            robot_yaw = 0.0  # Robot's yaw (orientation)
+            print("Occupancy Grid Created")
         # Robot position and orientation
-        robot_pos = [0.0, 0.0]  # x, y position of the robot
-        robot_yaw = 0.0  # Robot's yaw (orientation)
+
+        angle = self.angle_min
 
         for r in self.ranges:
             if math.isinf(r) or math.isnan(r):
