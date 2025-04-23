@@ -7,7 +7,7 @@ import numpy as np
 client = roslibpy.Ros(host='192.168.8.104', port=9012)
 client.run()
 
-robot_name = 'foxtrot'
+robot_name = 'juliet'
 mapper_topic = roslibpy.Topic(client, f'/{robot_name}/mapper', 'nav_msgs/OccupancyGrid')
 lidar_topic = roslibpy.Topic(client, f'/{robot_name}/scan', 'sensor_msgs/LaserScan')
 odom_topic = roslibpy.Topic(client, f'/{robot_name}/odom', 'nav_msgs/Odometry')
