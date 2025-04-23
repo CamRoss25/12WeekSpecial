@@ -9,6 +9,7 @@ import pygame
 from pprint import pp
 from math import atan2, degrees
 from race_3 import RaceVel
+import numpy as np
 
 #initialize pygame and joystics for controll
 pygame.init()
@@ -28,21 +29,21 @@ class RobotController:
         # Define the Robot that we want to control
         self.robot_name = 'foxtrot'
         # create robot topics
-        self.control_name = ['cmd_vel', 'cmd_lightring', 'cmd_audio']
-        self.topic_types = ['geometry_msgs/Twist', 'irobot_create_msgs/LightringLeds', 'irobot_create_msgs/AudioNoteVector']
+        self.control_name = ['cmd_vel', 'cmd_lightring', 'cmd_audio', 'map']
+        self.topic_types = ['geometry_msgs/Twist', 'irobot_create_msgs/LightringLeds', 'irobot_create_msgs/AudioNoteVector', 'nav_msgs/OccupancyGrid']
         self.topic_names = [f'/{self.robot_name}/{c}' for c in self.control_name]
         self.topics = {}
 
         # create subscribers
-        self.sub_name = ['ir_intensity', 'odom', 'imu','mode']
-        self.sub_types = ['irobot_create_msgs/IrIntensityVector', 'nav_msgs/Odometry',  'sensor_msgs/Imu','std_msgs/String']
+        self.sub_name = ['ir_intensity', 'odom', 'imu', 'mode', 'scan']
+        self.sub_types = ['irobot_create_msgs/IrIntensityVector', 'nav_msgs/Odometry', 'sensor_msgs/Imu','std_msgs/String', 'sensor_msgs/LaserScan']
         self.sub_names = [f'/{self.robot_name}/{c}' for c in self.sub_name]
         self.subs = {}
 
         # self.undock = roslibpy.actionlib.SimpleActionServer(self.ros, '/foxtrot/undock', 'irobot_create_msgs/action/Undock')
 
         # Define the threads that we want to run
-        self.thread_targets = [self.vel_msg, self.light_msg, self.sound_msg]
+        self.thread_targets = [self.vel_msg, self.light_msg, self.sound_msg, self.grid_msg]
         self.threads = [Thread(target = t) for t in self.thread_targets]
 
         #overide the backup safety parameter
@@ -73,6 +74,13 @@ class RobotController:
         self.pose = [0,0,0]
         self.ir_values = [0,0,0,0,0,0,0]
         self.ir_call = 0
+        self.ranges = []
+        self.grid_array = []
+        self.angle_min = 0
+        self.angle_max = 0
+        self.angle_increment = 0
+        self.room_made = 0
+        self.room_map = []
 
         self.velcon = RaceVel(self)
 
@@ -234,6 +242,101 @@ class RobotController:
                 sleep(0.1)
                 print("sent sound command")
 
+    
+    def make_grid(self):
+        """Creates an occupancy grid map from LiDAR data"""
+        ranges = self.ranges
+        angle_min = self.angle_min
+        angle_increment = self.angle_increment
+
+        width, height = 100, 50
+        resolution = 0.1
+        center = [width // 2, height // 2]
+
+        if self.room_made == 0:
+            self.room_made = 1
+            self.room_map = [[-1 for _ in range(width)] for _ in range(height)]
+            print("Room Map Created")
+        
+        data = [[0 for _ in range(width)] for _ in range(height)]
+        room_map = self.room_map
+
+        for i in range(len(ranges)):
+            angle_rad = angle_min + i * angle_increment
+            distance = ranges[i]
+
+            if distance == 0.0 or np.isnan(distance):
+                continue  # Skip invalid readings
+
+            # Convert polar to cartesian
+            angle_rad_act = angle_rad + self.yaw_deg * (np.pi / 180.0)
+            y_dist = distance * np.cos(angle_rad_act)
+            x_dist = distance * np.sin(angle_rad_act)
+
+            # Translate to map coordinates using odometry
+            robot_x, robot_y = self.odom_values[0], self.odom_values[1]
+            x_global = x_dist + robot_x
+            y_global = y_dist + robot_y
+
+            grid_x = int(round(x_global / resolution))
+            grid_y = int(round(y_global / resolution))
+
+            map_x = grid_x + center[0]
+            map_y = grid_y + center[1]
+
+            # Safety bounds check
+            if 0 <= map_x < width and 0 <= map_y < height:
+                data[map_y][map_x] += 1  # Mark as occupied
+
+        # Merge this frame into the global map
+        data_array = np.array(data)
+        room_array = np.array(room_map)
+
+        # Max to accumulate hits (you could also average or count)
+        updated_map = np.maximum(data_array, room_array)
+        self.room_map = updated_map.tolist()
+
+        data_list = [cell for row in self.room_map for cell in row]
+
+        self.grid_array = {
+            'header': {
+                'frame_id': 'map',
+                'stamp': {'secs': int(time()), 'nsecs': 0}
+            },
+            'info': {
+                'map_load_time': {'secs': int(time()), 'nsecs': 0},
+                'resolution': resolution,
+                'width': width,
+                'height': height,
+                'origin': {
+                    'position': {'x': 0.0, 'y': 0.0, 'z': 0.0},
+                    'orientation': {'x': 0.0, 'y': 0.0, 'z': 0.0, 'w': 1.0}
+                }
+            },
+            'data': data_list
+        }
+
+        return self.grid_array 
+    
+    def grid_msg(self):
+        while not self.stop:
+            """This publishes a grid message to our robot"""
+            self.topics['topic_map'].publish(roslibpy.Message(self.make_grid()))
+            # print(f"Publishing occupancy grid on {self.robot_name}")
+            sleep(.1)  # Publish at 10 Hz       
+
+    def clbk_scan(self, msg):
+        # print(msg)
+        self.angle_min = msg['angle_min']
+        self.angle_max = msg['angle_max']
+        self.angle_increment = msg['angle_increment']
+        self.ranges = msg['ranges']
+        return(self.ranges, self.angle_min, self.angle_max, self.angle_increment)
+    def reset_map(self):
+        self.room_map = [[-1 for _ in range(100)] for _ in range(50)]
+        print("Room Map Reset")
+        return(self.room_map)
+    
     def clbk_ir_intensity (self, msg):
         ir_far_left = msg['readings'][0]['value']
         ir_mid_left = msg['readings'][1]['value']
@@ -295,7 +398,7 @@ class RobotController:
             # for each subscriber, create a new topic and subscribe to it
             self.subs[sub_var_name] = roslibpy.Topic(self.ros, f'/{self.robot_name}/{sub_name}', self.sub_types[self.sub_name.index(sub_name)])
             self.subs[sub_var_name].subscribe(getattr(self, callback_name))
-            print(f"Subscribed to {sub_var_name} with callback {callback_name}")
+            # print(f"Subscribed to {sub_var_name} with callback {callback_name}")
         print("Subscribers Created")
     # This function is used to show the values of the robot every time the alt button is pressed
     def show_subs(self):        
@@ -303,7 +406,13 @@ class RobotController:
         #print(f'Odom: {self.odom_values_round}')
         #print(f'IMU: {round(self.yaw_deg, 2)}')
         #print(f'Vel MSG:: {self.vel_msg}')
-        print(f'MODE: {self.manual}')
+        #print(f'MODE: {self.manual}')
+        #print(f'Ranges: {self.ranges[1000]}')
+        #print(f'Angle Min: {self.angle_min}')
+        #print(f'Angle Max: {self.angle_max}')
+        #print(f'Angle Increment: {self.angle_increment}')
+        print(f'Grid Array: {self.grid_array}')
+        # self.reset_map()
         sleep(.1)
     # start the threads function
     def start_threads(self):
@@ -323,6 +432,7 @@ class RobotController:
         self.create_subs()
         self.create_topics()
         self.start_threads()
+
 
         while self.stop == False:
             self.pygame_events()
