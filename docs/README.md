@@ -17,3 +17,5 @@
 # site is live at a website
 
 # in the readme, publish the link 
+
+# bunch of pictures, like a legit website, put yourself in the shoes of a civilian student,
