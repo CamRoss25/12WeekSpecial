@@ -14,4 +14,23 @@ body {
     margin: 10px;
     line-height: 1.6;
   }
+
+.cat {
+display: block;
+width: 64px;
+height: 64px;
+background-image: ('images/Meow-Knight_Dodge.png'); /* Update with correct path */
+background-repeat: no-repeat;
+animation: walk 1s steps(6) infinite;
+margin: 2rem auto;
+    }
+
+  @keyframes walk {
+    from {
+      background-position: 0 0;
+    }
+    to {
+      background-position: 0 -384px;
+    }
+  }
   

@@ -112,6 +112,7 @@ Thus, the tale of Bella Rubijono is one of both intellect and creativity, a mast
   <img src="images/CamRubi.png" alt="Selfie of the Creators" style="max-width: 100%; height: auto;" />
 </div>
 
+<div class="cat"></div>
 
 # 🎻 A Final Note of Gratitude
 And so, dear traveler, thou hast reached the journey’s end.
