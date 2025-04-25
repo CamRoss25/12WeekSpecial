@@ -34,18 +34,18 @@ body {
     width: calc(128px * var(--pixel-size));
     position: absolute;
     }
-
+    
 .pixelart {
     image-rendering: pixelated;
     }
 
   @keyframes walk {
     from {
-      transform: translate3d(0px,0,0)
-   }
-   to {
-      transform: translate3d(-100%,0,0)
-   }
+      transform: translateY(0);
+    }
+    to {
+      transform: translateY(-198px); /* move 5 frames down (33px * 5) */
+    }
   }
   
   
