@@ -247,7 +247,8 @@ class RobotController:
         grid_width = 200
         grid_height = 200
         resolution = 0.05
-
+        robot_pos = self.odom_values
+        robot_yaw = self.yaw_deg
         
         if self.room_made == 0:
             self.room_made = 1
@@ -265,51 +266,51 @@ class RobotController:
                 continue
         
         # Calculate the x, y coordinates of the point based on the range and angle
-        x = r * math.cos(angle)
-        y = r * math.sin(angle)
-        angle += self.angle_increment
-        
-        # Convert the world coordinates to grid coordinates
-        gx = int((x + (grid_width * resolution) / 2) / resolution)
-        gy = int((y + (grid_height * resolution) / 2) / resolution)
-        
-        # If the grid coordinates are valid, update the grid
-        if 0 <= gx < grid_width and 0 <= gy < grid_height:
-            idx = gy * grid_width + gx
-            occupancy_grid[idx] = 100  # Mark the cell as occupied (obstacle)
-        
-        # Now, trace back from the robot's current position to this point
-        # Mark cells as free along the path, avoiding obstacles
-        x_robot = robot_pos[0]
-        y_robot = robot_pos[1]
-        x_diff = x - x_robot
-        y_diff = y - y_robot
-        dist = math.sqrt(x_diff**2 + y_diff**2)
-        
-        steps = int(dist / resolution)  # Number of steps to traverse along the line
-        
-        for i in range(steps):
-            # Intermediate points along the line from robot to the obstacle
-            step_x = x_robot + (x_diff * i / steps)
-            step_y = y_robot + (y_diff * i / steps)
+            x = r * math.cos(angle)
+            y = r * math.sin(angle)
+            angle += self.angle_increment
             
-            # Convert intermediate points to grid coordinates
-            gx_step = int((step_x + (grid_width * resolution) / 2) / resolution)
-            gy_step = int((step_y + (grid_height * resolution) / 2) / resolution)
+            # Convert the world coordinates to grid coordinates
+            gx = int((x + (grid_width * resolution) / 2) / resolution)
+            gy = int((y + (grid_height * resolution) / 2) / resolution)
             
-            if 0 <= gx_step < grid_width and 0 <= gy_step < grid_height:
-                idx_step = gy_step * grid_width + gx_step
-                if occupancy_grid[idx_step] != 100:  # Don't overwrite occupied cells
-                    occupancy_grid[idx_step] = 0  # Mark as free space (no object)
+            # If the grid coordinates are valid, update the grid
+            if 0 <= gx < grid_width and 0 <= gy < grid_height:
+                idx = gy * grid_width + gx
+                occupancy_grid[idx] = 100  # Mark the cell as occupied (obstacle)
+            
+            # Now, trace back from the robot's current position to this point
+            # Mark cells as free along the path, avoiding obstacles
+            x_robot = robot_pos[0]
+            y_robot = robot_pos[1]
+            x_diff = x - x_robot
+            y_diff = y - y_robot
+            dist = math.sqrt(x_diff**2 + y_diff**2)
+            
+            steps = int(dist / resolution)  # Number of steps to traverse along the line
+        
+            for i in range(steps):
+                # Intermediate points along the line from robot to the obstacle
+                step_x = x_robot + (x_diff * i / steps)
+                step_y = y_robot + (y_diff * i / steps)
+                
+                # Convert intermediate points to grid coordinates
+                gx_step = int((step_x + (grid_width * resolution) / 2) / resolution)
+                gy_step = int((step_y + (grid_height * resolution) / 2) / resolution)
+                
+                if 0 <= gx_step < grid_width and 0 <= gy_step < grid_height:
+                    idx_step = gy_step * grid_width + gx_step
+                    if occupancy_grid[idx_step] != 100:  # Don't overwrite occupied cells
+                        occupancy_grid[idx_step] = 0  # Mark as free space (no object)
 
 
         occupancy_msg = {
             'header': {
             'frame_id': 'map',
-            'stamp': {'secs': int(time.time()), 'nsecs': 0}},
+            'stamp': {'secs': int(time()), 'nsecs': 0}},
             
             'info': {
-            'map_load_time': {'secs': int(time.time()), 'nsecs': 0},
+            'map_load_time': {'secs': int(time()), 'nsecs': 0},
             'resolution': resolution,
             'width': grid_width,
             'height': grid_height,
@@ -324,7 +325,7 @@ class RobotController:
     def grid_msg(self):
         while not self.stop:
             """This publishes a grid message to our robot"""
-            self.topics['topic_map'].publish(roslibpy.Message(self.make_grid()))
+            self.topics['topic_mapper'].publish(roslibpy.Message(self.make_grid()))
             # print(f"Publishing occupancy grid on {self.robot_name}")
             sleep(.1)  # Publish at 10 Hz       
 

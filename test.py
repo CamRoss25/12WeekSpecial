@@ -7,6 +7,7 @@ from colors import *
 from Star_spangled_banner import star_spangled_banner
 import pygame
 from pprint import pp
+import math
 from math import atan2, degrees
 from race_3 import RaceVel
 import numpy as np
@@ -27,9 +28,9 @@ class RobotController:
         self.ring_colors = ring_colors
 
         # Define the Robot that we want to control
-        self.robot_name = 'foxtrot'
+        self.robot_name = 'echo'
         # create robot topics
-        self.control_name = ['cmd_vel', 'cmd_lightring', 'cmd_audio', 'map']
+        self.control_name = ['cmd_vel', 'cmd_lightring', 'cmd_audio', 'mapper']
         self.topic_types = ['geometry_msgs/Twist', 'irobot_create_msgs/LightringLeds', 'irobot_create_msgs/AudioNoteVector', 'nav_msgs/OccupancyGrid']
         self.topic_names = [f'/{self.robot_name}/{c}' for c in self.control_name]
         self.topics = {}
@@ -80,7 +81,8 @@ class RobotController:
         self.angle_max = 0
         self.angle_increment = 0
         self.room_made = 0
-        self.room_map = []
+        self.send_grid = 0
+        self.yaw_got = 0
 
         self.velcon = RaceVel(self)
 
@@ -205,7 +207,6 @@ class RobotController:
                                     'angular': {'x': 0.0, 'y': 0.0, 'z': 0}}
                 self.topics['topic_cmd_vel'].publish(msg)
                 sleep(0.1)
-                
     
     # light controll message for the robot
     def light_msg(self):
@@ -244,81 +245,109 @@ class RobotController:
 
     
     def make_grid(self):
-        """This creates a grid message for our robot"""
-        # initialize base variables
-        ranges = self.ranges
-        angle_min = self.angle_min
-        angle_increment = self.angle_increment
+        global occupancy_grid, confidence_map, robot_pos, robot_yaw
+       # Grid setup and variable initialization
+        grid_width = 500
+        grid_height = 500
+        resolution = 0.1
+        max_confidence = 5
+        min_confidence = -3
+        robot_pos = self.odom_values
+        robot_yaw = self.yaw_deg
+        print(self.yaw_rad)
+        angle_scan = self.angle_min
 
-        # Define a simple 100x50 grid with a diagonal wall
-        width, height = 100, 50
-        resolution = .1 # each cell is 0.1m x 0.1m
+        # Initialize occupancy grid and confidence map
+        if self.room_made == 0:
+            self.room_made = 1
+            occupancy_grid = [-1] * (grid_width * grid_height)
+            confidence_map = [0] * (grid_width * grid_height)
+            robot_pos_init = [0.0, 0.0]  # x, y position of the robot
+            robot_yaw_init = self.yaw_deg  # Robot's yaw (orientation)
+            print("Occupancy Grid Created")
+
         
-        center = [width // 2, height // 2]
-        # print(f"Center: {center}")
+        # Update occupancy grid based on LiDAR data
+        for r in self.ranges:
+            if math.isinf(r) or math.isnan(r): # if range is inf or nan, skip to next
+                angle_scan += self.angle_increment
+                continue
+            
 
-        ## Step 1: Create a 2D occupancy grid with all cells initialized to -1 (unknown)
-        data = [[-1 for _ in range(width)] for _ in range(height)]
-
-        ## Step 2: Set the cells in the grid to 0 (free space) based on the laser scan data
-        ## Step 3: Set the cells in the grid to +1 (occupied) based on the laser scan data
-        for i in range(len(ranges)):
-            angle = angle_min + i * angle_increment
-            distance = ranges[i]
-
-            x = int((center[0] + distance * np.cos(angle)) / resolution)
-            y = int((center[1] + distance * np.sin(angle)) / resolution)
-
-            # Check if the coordinates are within the grid bounds
-            if 0 <= x < width and 0 <= y < height:
-                # Set the cell to +1 (occupied) based on the laser scan data
-                data[y][x] += 1
-            # set all cells in the grid to 0 (free space) based on the laser scan data
-            for j in range(int(distance / resolution)):
-                # Convert polar coordinates to Cartesian coordinates
-                x_free = int(center[0] + j * np.cos(angle) / resolution)
-                y_free = int(center[1] + j * np.sin(angle) / resolution)
-                # Check if the coordinates are within the grid bounds
-                if 0 <= x_free < width and 0 <= y_free < height:
-                    data[y_free][x_free] = 0
-
-        ## Step 4: Convert the grid to a list of integers
-        data_list = []
-        for row in data:
-            for cell in row:
-                if cell == -1:
-                    data_list.append(-1)
-                elif cell == 0:
-                    data_list.append(0)
-                elif cell > 0:
-                    data_list.append(data[y][x])
-                else:
-                    data_list.append(-1)
-
-        ## Step 5: Create the occupancy grid message
-        self.grid_array = {
+            # Calculate the x and y coordinates of the point in the robot's frame
+            # and then transform to the map frame
+            x = robot_pos[0] + r * math.cos(angle_scan + self.yaw_rad)
+            y = robot_pos[1] + r * math.sin(angle_scan + self.yaw_rad)
+            angle_scan += self.angle_increment
+            
+            # Convert the coordinates to grid indices
+            gx = int((x + (grid_width * resolution) / 2) / resolution)
+            gy = int((y + (grid_height * resolution) / 2) / resolution)
+            
+            # update the confidence map and occupancy grid
+            # Check if the grid indices are within bounds
+            if 0 <= gx < grid_width and 0 <= gy < grid_height:
+                idx = gy * grid_width + gx
+                # print(idx)
+                # print(len(occupancy_grid))
+                confidence_map[idx] += 1
+                confidence_map[idx] = min(confidence_map[idx], max_confidence)
+                if confidence_map[idx] >= max_confidence:
+                    occupancy_grid[idx] = 100  # Confirm as occupied
+            
+            # Calculate the distance from the robot to the point
+            # and update the confidence map for the cells along the line of sight
+            x_robot = robot_pos[0]
+            y_robot = robot_pos[1]
+            x_diff = x - x_robot
+            y_diff = y - y_robot
+            dist = math.sqrt(x_diff**2 + y_diff**2)
+            steps = int(dist / resolution)
+            
+            # Loop through the cells along the line of sight and update the confidence map
+            for i in range(steps):
+                step_x = x_robot + (x_diff * i / steps)
+                step_y = y_robot + (y_diff * i / steps)
+                gx_step = int((step_x + (grid_width * resolution) / 2) / resolution)
+                gy_step = int((step_y + (grid_height * resolution) / 2) / resolution)
+                
+                if 0 <= gx_step < grid_width and 0 <= gy_step < grid_height: # Check if the grid indices are within bounds
+                    # Update the confidence map and occupancy grid
+                    idx_step = gy_step * grid_width + gx_step
+                    confidence_map[idx_step] -= 1
+                    confidence_map[idx_step] = max(confidence_map[idx_step], min_confidence)
+                    if confidence_map[idx_step] <= min_confidence:
+                        if occupancy_grid[idx_step] != 100:
+                            occupancy_grid[idx_step] = 0  # Confirm as free
+        
+        # create the occupancy grid message
+        occupancy_msg = {
             'header': {
-                'frame_id': 'map',
-                'stamp': {'secs': int(time()), 'nsecs': 0}},
+            'frame_id': 'map',
+            'stamp': {'secs': int(time()), 'nsecs': 0}},
+            
             'info': {
-                'map_load_time': {'secs': int(time()), 'nsecs': 0},
-                'resolution': resolution,
-                'width': width,
-                'height': height,
-                'origin': {
-                    'position': {'x': 0.0, 'y': 0.0, 'z': 0.0},
-                    'orientation': {'x': 0.0, 'y': 0.0, 'z': 0.0, 'w': 1.0}}},
-            'data': data_list}
-
-        ## Step 6: Return the occupancy grid message
-        return(self.grid_array)    
+            'map_load_time': {'secs': int(time()), 'nsecs': 0},
+            'resolution': resolution,
+            'width': grid_width,
+            'height': grid_height,
+            'origin': {
+                'position': {'x': 0, 'y': 0, 'z': 0.0}, ###########################################
+                'orientation': {'x': 0.0, 'y': 0.0, 'z': 0, 'w': 1.0}}},
+            'data': occupancy_grid}
+        # print(occupancy_grid)
+        return(occupancy_msg)  
+        
     
     def grid_msg(self):
         while not self.stop:
-            """This publishes a grid message to our robot"""
-            self.topics['topic_map'].publish(roslibpy.Message(self.make_grid()))
-            # print(f"Publishing occupancy grid on {self.robot_name}")
-            sleep(.1)  # Publish at 10 Hz       
+            if self.send_grid == 1:
+                """This publishes a grid message to our robot"""
+                self.topics['topic_mapper'].publish(roslibpy.Message(self.make_grid()))
+                print("Occupancy Grid Sent")
+                # print(f"Publishing occupancy grid on {self.robot_name}")
+                self.send_grid = 0
+                sleep(.1)  # Publish at 10 Hz       
 
     def clbk_scan(self, msg):
         # print(msg)
@@ -327,10 +356,10 @@ class RobotController:
         self.angle_increment = msg['angle_increment']
         self.ranges = msg['ranges']
         return(self.ranges, self.angle_min, self.angle_max, self.angle_increment)
+    
     def reset_map(self):
-        self.room_map = [[-1 for _ in range(100)] for _ in range(50)]
+        self.room_made = 0
         print("Room Map Reset")
-        return(self.room_map)
     
     def clbk_ir_intensity (self, msg):
         ir_far_left = msg['readings'][0]['value']
@@ -357,8 +386,13 @@ class RobotController:
         y = o.get('y')
         z = o.get('z')
         w = o.get('w')
-        yaw = atan2(2*(x*y+z*w), 1-2 *(y**2 +z**2))
-        self.yaw_deg = degrees(yaw)
+        self.yaw_rad = atan2(2*(x*y+z*w), 1-2 *(y**2 +z**2))
+        if self.yaw_got == 0:
+            self.yaw_got = 1
+            self.yaw_initial = self.yaw_rad
+
+        # Makes the initial angle zero and limits the degrees to -180 and 180
+        self.yaw_deg = degrees(self.yaw_rad) 
         return(self.yaw_deg)
     
     def clbk_mode(self, msg):
@@ -378,6 +412,7 @@ class RobotController:
     def reset_pose(self):
         reset_odom_service = roslibpy.Service(self.ros, f'/{self.robot_name}/reset_pose', 'irobot_create_msgs/ResetPose')
         reset_odom_service.call(roslibpy.ServiceRequest())
+        self.reset_map()
         print("Pose Reset")
 
     # this function helps to create the topics for the robot
@@ -406,7 +441,8 @@ class RobotController:
         #print(f'Angle Min: {self.angle_min}')
         #print(f'Angle Max: {self.angle_max}')
         #print(f'Angle Increment: {self.angle_increment}')
-        print(f'Grid Array: {self.grid_array}')
+        #print(f'Grid Array: {self.grid_array}')
+        self.send_grid = 1
         # self.reset_map()
         sleep(.1)
     # start the threads function
@@ -426,6 +462,7 @@ class RobotController:
     def run_loop(self):
         self.create_subs()
         self.create_topics()
+        # self.reset_pose()
         self.start_threads()
 
 
