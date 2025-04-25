@@ -23,7 +23,7 @@ body {
 
 .Character {
     width: calc(32px * var(--pixel-size));
-    height: calc(198px * var(--pixel-size));
+    height: calc(25px * var(--pixel-size));
     overflow: hidden;
     position: relative;
     margin: 4em auto;
