@@ -2,6 +2,7 @@
 
 body {
   font-family: 'IM Fell English', serif;
+  background: #96ffc1;
 }
 
 .parchment-text {
@@ -15,23 +16,30 @@ body {
     line-height: 1.6;
   }
 
-  .cat {
-    display: block;
-    width: 64px;
-    height: 64px;
-    background-image: url('images/Meow-Knight_Dodge.png'); /* Correct usage */
-    background-repeat: no-repeat;
-    animation: walk 1s steps(6) infinite;
+  .cat-container {
+    width: 32px;
+    height: 33px; /* use 33 if each frame is 33px tall */
+    overflow: hidden;
     margin: 2rem auto;
   }
   
-
+  .cat-sprite {
+    width: 32px;
+    height: 198px; /* full height of all frames */
+    background-image: url('images/Meow-Knight_Dodge.png');
+    background-repeat: no-repeat;
+    animation: walk 1s steps(6) infinite;
+    image-rendering: pixelated; /* keeps that retro look */
+  }
+  
   @keyframes walk {
     from {
-      background-position: 0 0;
+      transform: translateY(0);
     }
     to {
-      background-position: 0 -384px;
+      transform: translateY(-165px); /* move 5 frames down (33px * 5) */
     }
   }
+  
+  
   
