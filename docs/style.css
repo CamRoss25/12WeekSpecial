@@ -30,7 +30,7 @@ body {
     }
 
 .Character_spritesheet {
-    animation: moveSpritesheet 1s steps(6) infinite;
+    animation: walk 1s steps(6) infinite;
     width: calc(32px * var(--pixel-size));
     position: absolute;
     }
