@@ -4,12 +4,30 @@ Hark! Fair traveler, thou art most welcome to the grand unveiling of our humble 
 
 ### What is the Create3 Robot?
 Lo and behold, the Create3 robot! A mechanical steed of great precision, crafted by the masters at iRobot. With sensors sharp and wheels swift, this wondrous device aids in the noble task of autonomous navigation, proving itself a worthy companion for any robotic quest. It is a marvel of engineering, ready to chart the unknown and conquer challenges with its intelligence.
+![Create3 Robot](images/create3.png)
 
 ### What is ROS?
 Ah, ROS—Robot Operating System! A magical framework, open to all, that binds the various elements of the robotic realm together. Through its power, the Create3 can communicate with its mighty LIDAR and other enchanted sensors, performing feats of mapping and localization with great finesse. A true marvel of the modern age!
 
 So, brave soul, as you journey through this portfolio, prepare to witness how we harnessed the might of ROS and the Create3 robot to map an area in a wondrous display of technological prowess!
 
+# Dependencies 
+Thou shall need the following:
+- Python
+- roslibpy
+- Create3 Robot
+- Summon the power of thy mind! 
+
+# Installation and Dependencies 
+Use the `pip install` for any installation of programs.
+
+This will install the lastest version of the [Python ROS Bridge library](https://pypi.org/project/roslibpy/)
+`pip install roslibpy`
+
+This will install the latest version of the [Python Pygame library](https://pypi.org/project/pygame/)
+`pip install pygame`
+
+# Tale of the Creators
 
 ## Markdown Guide
 # usna logo with png 
