@@ -5,7 +5,11 @@ Hark! Fair traveler, thou art most welcome to the grand unveiling of our humble 
 ## What is the Create3 Robot?
 Lo and behold, the Create3 robot! A mechanical steed of great precision, crafted by the masters at iRobot. With sensors sharp and wheels swift, this wondrous device aids in the noble task of autonomous navigation, proving itself a worthy companion for any robotic quest. It is a marvel of engineering, ready to chart the unknown and conquer challenges with its intelligence.
 
-![Create3 Robot](images/create3.png)
+<div style="text-align: center;">
+  <img src="images/create3.png" alt="Create3 Robot" style="max-width: 100%; height: auto;" />
+</div>
+
+
 
 ## What is ROS?
 Ah, ROS—Robot Operating System! A magical framework, open to all, that binds the various elements of the robotic realm together. Through its power, the Create3 can communicate with its mighty LIDAR and other enchanted sensors, performing feats of mapping and localization with great finesse. A true marvel of the modern age!
@@ -104,7 +108,10 @@ Thus, the tale of Bella Rubijono is one of both intellect and creativity, a mast
  </tr>
 </table>
 
-![Selfie of the Creators](images/CamRubi.png)
+<div style="text-align: center;">
+  <img src="images/CamRubi.png" alt="Selfie of the Creators" style="max-width: 100%; height: auto;" />
+</div>
+
 
 # 🎻 A Final Note of Gratitude
 And so, dear traveler, thou hast reached the journey’s end.
