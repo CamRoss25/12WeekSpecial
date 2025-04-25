@@ -30,7 +30,7 @@ body {
     }
 
 .Character_spritesheet {
-    animation: walk 1s steps(6) infinite;
+    animation: walk 1s steps(8) infinite;
     width: calc(32px * var(--pixel-size));
     position: absolute;
     }
@@ -44,7 +44,7 @@ body {
       transform: translateY(0);
     }
     to {
-      transform: translateY(-165px); /* move 5 frames down (20px * 8) */
+      transform: translateY(-172px); /* move 5 frames down (20px * 8) */
     }
   }
   
