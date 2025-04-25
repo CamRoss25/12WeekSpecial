@@ -44,7 +44,7 @@ body {
       transform: translateY(0);
     }
     to {
-      transform: translateY(-172px); /* move 5 frames down (20px * 8) */
+      transform: translateY(-25px); /* move 5 frames down (20px * 8) */
     }
   }
   
