@@ -41,10 +41,10 @@ body {
 
   @keyframes walk {
     from {
-      transform: translateY(0);
+      transform: translateX(0);
     }
     to {
-      transform: translateY(-25px); /* move 5 frames down (20px * 8) */
+      transform: translateX(-20px); /* move 5 frames down (20px * 8) */
     }
   }
   
