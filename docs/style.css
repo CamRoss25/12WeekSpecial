@@ -18,7 +18,7 @@ body {
 
   .cat-container {
     width: 32px;
-    height: 33px; /* use 33 if each frame is 33px tall */
+    height: 25px; /* use 33 if each frame is 33px tall */
     overflow: hidden;
     margin: 2rem auto;
   }
@@ -37,7 +37,7 @@ body {
       transform: translateY(0);
     }
     to {
-      transform: translateY(-198px); /* move 5 frames down (33px * 5) */
+      transform: translateY(-165px); /* move 5 frames down (33px * 5) */
     }
   }
   
