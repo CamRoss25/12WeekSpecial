@@ -28,7 +28,7 @@ This will install the latest version of the [Python Pygame library](https://pypi
 `pip install pygame`
 
 # Tale of the Creators
-<table border="0">
+<table border="0" font ="BlackChancery">
  <tr>
     <td><b style="font-size:30px">Cam Ross</b></td>
     <td><b style="font-size:30px">Bella Rubijono</b></td>

@@ -1,6 +1,6 @@
 <!-- markdownlint-disable first-line-h1 -->
 
-![logo](logo2.png)
+![logo](images/logo2.png)
 
 # EW458 Section 3331
 
