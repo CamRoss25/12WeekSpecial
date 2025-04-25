@@ -15,15 +15,16 @@ body {
     line-height: 1.6;
   }
 
-.cat {
-display: block;
-width: 64px;
-height: 64px;
-background-image: ('images/Meow-Knight_Dodge.png'); /* Update with correct path */
-background-repeat: no-repeat;
-animation: walk 1s steps(6) infinite;
-margin: 2rem auto;
-    }
+  .cat {
+    display: block;
+    width: 64px;
+    height: 64px;
+    background-image: url('images/Meow-Knight_Dodge.png'); /* Correct usage */
+    background-repeat: no-repeat;
+    animation: walk 1s steps(6) infinite;
+    margin: 2rem auto;
+  }
+  
 
   @keyframes walk {
     from {
