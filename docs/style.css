@@ -16,22 +16,29 @@ body {
     line-height: 1.6;
   }
 
-  .cat-container {
-    width: 32px;
-    height: 25px; /* use 33 if each frame is 33px tall */
+  :root {
+    --pixel-size: 6;
+ }
+ 
+
+.Character {
+    width: calc(32px * var(--pixel-size));
+    height: calc(32px * var(--pixel-size));
     overflow: hidden;
-    margin: 2rem auto;
-  }
-  
-  .cat-sprite {
-    width: 32px;
-    height: 198px; /* full height of all frames */
-    background-image: url('images/Meow-Knight_Dodge.png');
-    background-repeat: no-repeat;
-    animation: walk 1s steps(8) infinite;
-    image-rendering: pixelated; /* keeps that retro look */
-  }
-  
+    position: relative;
+    margin: 4em auto;
+    }
+
+.Character_spritesheet {
+    animation: moveSpritesheet 1s steps(4) infinite;
+    width: calc(128px * var(--pixel-size));
+    position: absolute;
+    }
+    
+.pixelart {
+    image-rendering: pixelated;
+    }
+
   @keyframes walk {
     from {
       transform: translateY(0);
