@@ -28,6 +28,31 @@ This will install the latest version of the [Python Pygame library](https://pypi
 `pip install pygame`
 
 # Tale of the Creators
+<table border="0">
+ <tr>
+    <td><b style="font-size:30px">Cam Ross</b></td>
+    <td><b style="font-size:30px">Bella Rubijono</b></td>
+ </tr>
+ <tr>
+    <td>"The Tale of Cam Ross, Seeker of Knowledge and Sky"
+
+Hark! Gather ye 'round, for I shall recount the tale of Cam Ross, a noble soul of great ambition and skill. A senior at the esteemed Naval Academy, he doth study the sacred arts of Robotics and Control Engineering, mastering the very forces that govern machines with wisdom beyond his years. Yet, his journey doth not end in mere mastery of circuits and gears!
+
+Upon graduation, Cam shall don the wings of a Marine Corps pilot, soaring through the skies as a guardian of the heavens, commanding the winds with the same skill he wields in the realm of robotics. But lo, even the mightiest of warriors must find respite! In the hours of quiet, Cam doth indulge in the games of the mind, lost in the fantastical realms of video games and the camaraderie of his friends in the legendary battles of Dungeons & Dragons.
+
+Thus, the tale of Cam Ross is one of both intellect and adventure, a seeker of knowledge by day and a champion of camaraderie by night. Truly, his path is one of both wisdom and valor!</td>
+    <td>"The Ballad of Bella Rubijono, Mistress of Machines and Melody"
+
+Lo! Attend, ye listeners, to the tale of Bella Rubijono, a scholar of unmatched grace and intellect, who walks the hallowed halls of the Naval Academy as a senior in the noble study of Robotics and Control Engineering. With hands steady and mind sharp, she doth wield her knowledge of machines, taming the intricate dance of gears and circuits with a mastery that promises great feats.
+
+Yet, her path is not solely bound to the land of wires and code, for upon her graduation, Bella shall rise to the rank of Surface Warfare Officer, embracing the call of duty upon the seas. With the esteemed Engineering Duty Officer (EDO) option, she shall command the very engines that propel the mighty vessels of the fleet, her wisdom guiding their course.
+
+But behold! Even the fiercest of warriors must find solace in their passions. Bella, when not commanding the realms of robotics and the waves, finds joy in the delicate art of handicrafts, weaving threads through crochet with deft fingers. Her voice, too, doth soar in song, filling the air with melodies as sweet as the winds. And, as night falls, she doth retreat into the realms of video games, where epic quests and battles unfold before her eyes.
+
+Thus, the tale of Bella Rubijono is one of both intellect and creativity, a master of machines by day and a poet of song and craft by night. Truly, she is a force to be reckoned with, both on land and sea!</td>
+ </tr>
+</table>
+![Selfie of the Creators](images/CamRubi.png)
 
 ## Markdown Guide
 # usna logo with png 
