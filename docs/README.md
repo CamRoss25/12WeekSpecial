@@ -52,6 +52,7 @@ But behold! Even the fiercest of warriors must find solace in their passions. Be
 Thus, the tale of Bella Rubijono is one of both intellect and creativity, a master of machines by day and a poet of song and craft by night. Truly, she is a force to be reckoned with, both on land and sea!</td>
  </tr>
 </table>
+
 ![Selfie of the Creators](images/CamRubi.png)
 
 ## Markdown Guide
