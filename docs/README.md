@@ -2,23 +2,24 @@
 
 Hark! Fair traveler, thou art most welcome to the grand unveiling of our humble work—*a tale of wonder and innovation*! We, Camren and Bella, extend our heartfelt thanks for taking the time to gaze upon our portfolio, which doth present the movement of the noble Create3 robot, as it embarks on its most daring adventure: mapping an area through the ancient art of LIDAR and the powerful connection known as ROS (Robot Operating System).
 
-### What is the Create3 Robot?
+## What is the Create3 Robot?
 Lo and behold, the Create3 robot! A mechanical steed of great precision, crafted by the masters at iRobot. With sensors sharp and wheels swift, this wondrous device aids in the noble task of autonomous navigation, proving itself a worthy companion for any robotic quest. It is a marvel of engineering, ready to chart the unknown and conquer challenges with its intelligence.
+
 ![Create3 Robot](images/create3.png)
 
-### What is ROS?
+## What is ROS?
 Ah, ROS—Robot Operating System! A magical framework, open to all, that binds the various elements of the robotic realm together. Through its power, the Create3 can communicate with its mighty LIDAR and other enchanted sensors, performing feats of mapping and localization with great finesse. A true marvel of the modern age!
 
 So, brave soul, as you journey through this portfolio, prepare to witness how we harnessed the might of ROS and the Create3 robot to map an area in a wondrous display of technological prowess!
 
-# Dependencies 
+## Dependencies ![Chest](images/chest.png)
 Thou shall need the following:
 - Python
 - roslibpy
 - Create3 Robot
 - Summon the power of thy mind! 
 
-# Installation and Dependencies 
+## Prepare They Scrolls ![Sword](images/sword.png)
 Use the `pip install` for any installation of programs.
 
 This will install the lastest version of the [Python ROS Bridge library](https://pypi.org/project/roslibpy/)
@@ -27,12 +28,62 @@ This will install the lastest version of the [Python ROS Bridge library](https:/
 This will install the latest version of the [Python Pygame library](https://pypi.org/project/pygame/)
 `pip install pygame`
 
+## How to Run
+### The Arcane Script: Pseudocode of the Mapping Rite
+```python
+# Begin the Ritual
+import roslibpy
+import math
+
+# Connect to the mighty ROS Bridge
+client = roslibpy.Ros(host='ip address', port=9012)
+client.run()
+
+robot_name = 'name'
+
+# Summon the LIDAR and Odometry and initialize its vision
+mapper_topic = roslibpy.Topic(client, f'/{robot_name}/mapper', 'nav_msgs/OccupancyGrid')
+lidar_topic = roslibpy.Topic(client, f'/{robot_name}/scan', 'sensor_msgs/LaserScan')
+odom_topic = roslibpy.Topic(client, f'/{robot_name}/odom', 'nav_msgs/Odometry')
+
+# Create a blank scroll to record the map
+grid_width = 500
+grid_height = 500
+resolution = 0.1
+occupancy_grid = [-1] * (grid_width * grid_height)
+
+# Whilst the Create3 doth roam:
+     # Gather distance and angle from LIDAR's gaze
+     def lidar_callback(msg):
+        global occupancy_grid
+     # Translate these into sacred coordinates
+     # Mark these coordinates on the map-scroll
+     # Update the display for the realm revealed
+
+# When the journey ends:
+     # Save the scroll for future sages
+     # Close the connection to the mechanical beast
+    lidar_topic.unsubscribe()
+    odom_topic.unsubscribe()
+    mapper_topic.unadvertise()
+
+# End the Ritual
+client.terminate()
+
+```
+### Glimpse of the Cartographer's Triumph ![Barrel](images/barrel.png)
+This is where we insert images of the example map
+
 # Tale of the Creators
 <table border="0">
- <tr>
-    <td><b style="font-size:30px">Cam Ross</b></td>
-    <td><b style="font-size:30px">Bella Rubijono</b></td>
- </tr>
+ <td style="text-align: center;">
+      <b style="font-size:30px">Cam Ross</b><br />
+      <img src="images/cam.png" alt="Cam Ross" style="width:100px; border-radius: 12px; margin-top: 10px;" />
+    </td>
+    <td style="text-align: center;">
+      <b style="font-size:30px">Bella Rubijono</b><br />
+      <img src="images/bella.png" alt="Bella Rubijono" style="width:100px; border-radius: 12px; margin-top: 10px;" />
+    </td>
  <tr>
     <td>"The Tale of Cam Ross, Seeker of Knowledge and Sky"
 
@@ -55,24 +106,17 @@ Thus, the tale of Bella Rubijono is one of both intellect and creativity, a mast
 
 ![Selfie of the Creators](images/CamRubi.png)
 
-## Markdown Guide
-# usna logo with png 
-# Introduction - talk about project
-# About Designers
-# Dependencies / How to Get Started - installation `pip3 install roslibpy`
-# How to Run 
+# 🎻 A Final Note of Gratitude
+And so, dear traveler, thou hast reached the journey’s end.
 
-## Each heading becomes a link in our documentation site
-# there is a coverpage.md 
-# do images 
-# the whole docsify is in github 
+With humble hearts and joyous spirits, we—Cam and Bella—offer thee our sincerest thanks for walking beside us through this tale of machines and magic, of gears and glyphs, of code and courage. Thy time is a treasure, thy curiosity a gift most rare.
 
-# site the whole repository of the code under the repo: 
-# example map and how it builds 
+May the knowledge herein serve thee well on thine own quests, and may thy days be filled with wonder, discovery, and the noble pursuit of learning.
 
-# publish the repository and push/commit - settings, github pages, from main branch, /docs folder, save (make a webpage)
-# site is live at a website
+Should fate guide our paths to cross again, know that thou art ever welcome at our hearth.
 
-# in the readme, publish the link 
+Until then…
 
-# bunch of pictures, like a legit website, put yourself in the shoes of a civilian student,
+Go forth with honor. Create boldly. Map bravely.
+
+🕯️ Finis.
