@@ -23,14 +23,14 @@ body {
 
 .Character {
     width: calc(32px * var(--pixel-size));
-    height: calc(32px * var(--pixel-size));
+    height: calc(198px * var(--pixel-size));
     overflow: hidden;
     position: relative;
     margin: 4em auto;
     }
 
 .Character_spritesheet {
-    animation: moveSpritesheet 1s steps(8) infinite;
+    animation: moveSpritesheet 1s steps(6) infinite;
     width: calc(32px * var(--pixel-size));
     position: absolute;
     }
@@ -44,7 +44,7 @@ body {
       transform: translateY(0);
     }
     to {
-      transform: translateY(-160px); /* move 5 frames down (20px * 8) */
+      transform: translateY(-165px); /* move 5 frames down (20px * 8) */
     }
   }
   
