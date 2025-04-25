@@ -28,16 +28,16 @@ body {
     height: 198px; /* full height of all frames */
     background-image: url('images/Meow-Knight_Dodge.png');
     background-repeat: no-repeat;
-    animation: walk 1s steps(6) infinite;
+    animation: walk 1s steps(8) infinite;
     image-rendering: pixelated; /* keeps that retro look */
   }
   
   @keyframes walk {
     from {
-      transform: translateX(0);
+      transform: translateY(0);
     }
     to {
-      transform: translateX(-165px); /* move 5 frames down (33px * 5) */
+      transform: translateY(-198px); /* move 5 frames down (33px * 5) */
     }
   }
   
