@@ -77,7 +77,7 @@ client.terminate()
 ```
 ### Glimpse of the Cartographer's Triumph ![Barrel](images/barrel.png)
 ![map](map1.gif)
-![map](map2.gif)
+![map2](map2.gif)
 
 
 # Tale of the Creators
