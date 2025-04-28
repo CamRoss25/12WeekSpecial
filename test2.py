@@ -250,6 +250,8 @@ class RobotController:
         grid_width = 500
         grid_height = 500
         resolution = 0.1
+        max_confidence = 5
+        min_confidence = -3
         robot_pos = self.odom_values
         robot_yaw = self.yaw_deg
         angle_scan = self.angle_min
@@ -291,12 +293,12 @@ class RobotController:
                 confidence_map[idx] += 1
                 confidence_map[idx] = min(confidence_map[idx], max_confidence)
                 if confidence_map[idx] >= max_confidence:
-                    occupancy_grid[idx] = 100   # Confirm as occupied
+                    occupancy_grid[idx] = 100  # Confirm as occupied
             
             # Calculate the distance from the robot to the point
             # and update the confidence map for the cells along the line of sight
-            x_robot = robot_pos[0]
-            y_robot = robot_pos[1]
+            x_robot = robot_pos[0] # x position of the robot in terms of the map
+            y_robot = robot_pos[1] # int((robot_pos[1] + (grid_width * resolution) / 2) / resolution) # y position of the robot in terms of the map
             x_diff = x - x_robot
             y_diff = y - y_robot
             dist = math.sqrt(x_diff**2 + y_diff**2)
