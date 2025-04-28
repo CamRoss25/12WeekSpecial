@@ -76,7 +76,7 @@ client.terminate()
 
 ```
 ### Glimpse of the Cartographer's Triumph ![Barrel](images/barrel.png)
-This is where we insert images of the example map
+![map](map1.gif)
 
 # Tale of the Creators
 <table border="0">
