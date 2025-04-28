@@ -1,313 +1,526 @@
-import math
-import time
+# import necessary files
 import roslibpy
-from collections import deque
-import keyboard
+import roslibpy.actionlib
+from time import *
+from threading import *
+from colors import *
+from Star_spangled_banner import star_spangled_banner
+import pygame
+from pprint import pp
+import math
+from math import atan2, degrees
+from race_3 import RaceVel
+import numpy as np
+
+#initialize pygame and joystics for controll
+pygame.init()
+pygame.joystick.init() 
+
+class RobotController:
+    def __init__(self):
+        # Establish Robot Connection to the ROS network
+        ip = '192.168.8.104'
+        # ip = '127.0.0.1'
+        port = 9012
+        self.ros = roslibpy.Ros(host = ip, port = port)
+
+        # Define the colors for the light ring from the imported file
+        self.ring_colors = ring_colors
+
+        # Define the Robot that we want to control
+        self.robot_name = 'india'
+        # create robot topics
+        self.control_name = ['cmd_vel', 'cmd_lightring', 'cmd_audio', 'mapper']
+        self.topic_types = ['geometry_msgs/Twist', 'irobot_create_msgs/LightringLeds', 'irobot_create_msgs/AudioNoteVector', 'nav_msgs/OccupancyGrid']
+        self.topic_names = [f'/{self.robot_name}/{c}' for c in self.control_name]
+        self.topics = {}
+
+        # create subscribers
+        # self.sub_name = ['ir_intensity', 'odom', 'imu', 'mode', 'scan']
+        self.sub_name = ['odom', 'mode', 'scan']
+        # self.sub_types = ['irobot_create_msgs/IrIntensityVector', 'nav_msgs/Odometry', 'sensor_msgs/Imu','std_msgs/String', 'sensor_msgs/LaserScan']
+        self.sub_types = ['nav_msgs/Odometry','std_msgs/String', 'sensor_msgs/LaserScan']
+        self.sub_names = [f'/{self.robot_name}/{c}' for c in self.sub_name]
+        self.subs = {}
+
+        # self.undock = roslibpy.actionlib.SimpleActionServer(self.ros, '/foxtrot/undock', 'irobot_create_msgs/action/Undock')
+
+        # Define the threads that we want to run
+        self.thread_targets = [self.vel_msg, self.light_msg, self.sound_msg, self.grid_msg]
+        self.threads = [Thread(target = t) for t in self.thread_targets]
+
+        #overide the backup safety parameter
+        # self.param = roslibpy.Param(self.ros, f'/{self.robot_name}/motion_control/safety_overide/')
+        # self.param.set('backup_only/')
+        
+        # initialize changing variables
+        self.stop = False
+        self.start = False
+        self.event = Event()
+        self.lock = Lock()
+        self.locked = False
+        self.armed  = False
+        self.manual = True
+        self.x_cmd = 0
+        self.turn_cmd = 0
+        self.turn_vel = 0
+        self.x_vel = 0
+        self.light_cmd = None
+        self.sound_cmd  = None
+        self.color_butt = 0
+        self.mode_msg = None
 
 
-class OccupancyGridMapper:
-    def __init__(self, ip, port, robot_name, topic_name):
-        # ROS connection settings
-        self.ip = ip
-        self.port = port
-        self.robot_name = robot_name
-        self.topic_name = topic_name
-
-        # ROS connection
-        self.ros = roslibpy.Ros(host=self.ip, port=self.port)
-        self.ros.run()
-        print(f"Connected to ROS: {self.ros.is_connected}")
-
-        # ROS Topic setup
-        self.map_topic = roslibpy.Topic(self.ros, f'/{self.robot_name}/{self.topic_name}', 'nav_msgs/OccupancyGrid')
-        self.odom_topic = roslibpy.Topic(self.ros, f'/{self.robot_name}/odom', 'nav_msgs/Odometry')
-        self.scan_topic = roslibpy.Topic(self.ros, f'/{self.robot_name}/scan', 'sensor_msgs/LaserScan')
-
-        # Robot and map parameters
-        self.resolution = 0.1 # 0.1 meters / cell
-        self.map_width = 600  # 60 meters 
-        self.map_height = 600 # 60 meters 
-        self.map_origin_x = -30.0
-        self.map_origin_y = -30.0
-        self.robot_radius_m = 0.15
-        self.robot_radius_cells = int(self.robot_radius_m / self.resolution)
-
-        # Odometry and laser data
-        self.x = 0
-        self.y = 0
-        self.yaw = 0
-        self.initial_yaw = None
-        self.odom_buffer = deque(maxlen=100)
+        # initialize starting values
+        self.yaw_deg = 0
+        self.odom_values = [0,0,0]
+        self.pose = [0,0,0]
+        self.ir_values = [0,0,0,0,0,0,0]
+        self.ir_call = 0
         self.ranges = []
-        self.angs = []
-        self.scan_time = 0.0
-        self.scan_duration = 0.1 # seconds
+        self.grid_array = []
+        self.angle_min = 0
+        self.angle_max = 0
+        self.angle_increment = 0
+        self.room_made = 0
+        self.send_grid = 0
+        self.yaw_got = 0
+        self.odom_time2 = None
 
-        # Map hit and miss counters
-        self.hit_counts = [0] * (self.map_width * self.map_height)
-        self.miss_counts = [0] * (self.map_width * self.map_height)
-        self.persistent_map = [-1] * (self.map_width * self.map_height)
+        self.velcon = RaceVel(self)
 
-        # Rest ODOM (X - Front) (Y - Left) (Z - Up)
-        self.reset_odometry()
+    # this control code is not used in this program but will help with future implementations
+    def pygame_events(self):
+        while not self.stop: 
+            """This retrieves pygame events"""
+            pygame.event.get()
+            joy = pygame.joystick.Joystick(0)
+            hx, hy = joy.get_hat(0)
+            A = joy.get_button(0)
+            B = joy.get_button(1)
+            X = joy.get_button(2)
+            Y = joy.get_button(3)
+            left_bump = joy.get_button(4)
+            right_bump = joy.get_button(5)
+            alt_button = joy.get_button(6)
+            start_button = joy.get_button(7)
+            left_stick_button = joy.get_button(8)
+            right_stick_button = joy.get_button(9)
+            left_stick_x = round(joy.get_axis(0), 2)
+            left_stick_y = round(joy.get_axis(1), 2)    
+            right_stick_x = round(joy.get_axis(2), 2)
+            right_stick_y = round(joy.get_axis(3), 2)
 
-        # Subscribe to ROS Topics
-        self.odom_topic.subscribe(self.callback_odom)
-        self.scan_topic.subscribe(self.callback_scan)
+            if alt_button == 1:
+                self.show_subs()
 
-    def wrap_to_pi(self, angle):
-        """Ensure the yaw angle is wraped from -pi to pi"""
-        return (angle + math.pi) % (2 * math.pi) - math.pi
+            if left_bump == 1:
+                self.reset_pose()
+                print("Pose Reset")
+
+            # Up Hat is Armed
+            if hy == 1:
+                self.armed = True
+                self.color_butt = 1
+                print(f'\n Robot is Armed')
+            # Down Hat is Disarmed
+            if hy == -1:
+                self.armed = False
+                self.color_butt = 1
+                print('\n Robot is Disarmed')
+            # Left Hat is Manual
+            if hx == -1:
+                self.manual = True
+                self.light_cmd = self.ring_colors[3]
+                self.color_butt = 1
+                print('\n Robot is in Manual Mode')
+            # Right Hat is Autonomous
+            if hx == 1:
+                self.manual = False
+                self.light_cmd = self.ring_colors[2]
+                self.color_butt = 1
+                print('\n Robot is in Autonomous Mode') 
+
+            if start_button ==1:
+                self.stop = True
+            
+            if B == 1 and self.color_butt != 1:
+                self.light_cmd = self.ring_colors[0]
+                self.color_butt = 1
+                self.ir_call = 1
+                print(f"IR Call: {self.ir_call}")
+                # print('B is pressed')
+            if A == 1 and self.color_butt != 1:
+                self.light_cmd = self.ring_colors[1]
+                self.color_butt = 1
+                self.ir_call = 0
+                print(f"IR Call: {self.ir_call}")
+                # print('A is pressed')
+            if X == 1 and self.color_butt != 1:
+                self.light_cmd = self.ring_colors[2]
+                self.color_butt = 1
+                self.ir_call = -1
+                print(f"IR Call: {self.ir_call}")
+            
+            
+            if Y == 1:
+                self.sound_cmd = star_spangled_banner[5]
+                # print('y is pressed')
+            if Y == 0:
+                self.sound_cmd = None
+            
+            if 0.1 < right_stick_x or right_stick_x < -0.1:
+                self.turn_cmd = right_stick_x
+                # print(f'Right Stick X: {self.turn_cmd}')
+            else:
+                self.turn_cmd = 0
+                
+            if  0.1 < left_stick_y or left_stick_y < -0.1:
+                self.x_cmd = left_stick_y
+                # print(f'Left Stick Y {self.x_cmd}')
+            else:
+                self.x_cmd = 0
+            #print(f"Armed: {self.armed}\tManual: {self.manual}")
     
-    def callback_odom(self, message):
-        """Function utilized to store ODOM Ros 2 messages in initialized variables"""
-        try: 
-            pos = message['pose']['pose']['position']
-            o = message['pose']['pose']['orientation']
-            qx, qy, qz, qw = o.get('x'), o.get('y'), o.get('z'), o.get('w')
-            raw_yaw = math.atan2(2 * (qw * qz + qx * qy), 1 - 2 * (qy * qy + qz * qz))
+    # velocity control mesage for the robot
+    def vel_msg(self):
+        """This publishes a velocity message to our robot"""
 
-            if self.initial_yaw is None:
-                self.initial_yaw = raw_yaw
+        while not self.stop:
+            if self.armed == True:
+                # If the robot is in manual mode, we will use the joystick to control the robot
+                if self.manual == True:
+                    if self.x_cmd or self.turn_cmd != 0:
+                        x_vel = round((self.x_cmd / 3), 1)* -1.5
+                        turn_vel = round(self.turn_cmd, 1) * -1.5
 
-            self.x = pos.get('x')
-            self.y = pos.get('y')
-            self.yaw = self.wrap_to_pi(raw_yaw - self.initial_yaw) # ensures that the first yaw angle is 0 rads
-
-            # Check for timestamp
-            stamp = message['header']['stamp']
-            if stamp:
-                time_sec = stamp['sec'] + stamp['nanosec'] * 1e-9 # time stamp from odom data subscription in seconds
-            else:
-                time_sec = time.time()  # fallback to system time
-
-            # Store timestamped pose
-            self.odom_buffer.append({
-                'time': time_sec,
-                'x': self.x,
-                'y': self.y,
-                'yaw': self.yaw
-            })
-
-        except KeyError as e:
-            print(f"KeyError in callback_odom: {e}")
-            print(f"Message received: {message}")
-
-    def callback_scan(self, msg):
-        try:
-            # Safely extract time
-            stamp = msg['header']['stamp']
-            if stamp:
-                self.scan_time = stamp['sec'] + stamp['nanosec'] * 1e-9
-            else:
-                self.scan_time = time.time()  # fallback to system time
-
-            ang_min = msg['angle_min']
-            ang_inc = msg['angle_increment']
-            self.ranges = msg['ranges']
-            self.angs = [ang_min + i * ang_inc for i in range(len(self.ranges))] # calcualte the angle of LIDAR hits of objects
-
-            # Try to get scan duration safely
-            if msg['time_increment'] > 0:
-                self.scan_duration = msg['time_increment'] * len(self.ranges) # calculate the scan time based on the number of ranges detected
-            else:
-                self.scan_duration = 0.1  # reasonable default for scan time
-
-        except KeyError as e:
-            print(f"KeyError in callback_scan: {e}")
-            print(f"Message received: {msg}")
-
-    def reset_odometry(self):
-        """Reset odometry to the origin and set Initial Yaw to 0 rads."""
-        reset_odom_service = roslibpy.Service(self.ros, f'/{self.robot_name}/reset_pose', 'irobot_create_msgs/ResetPose')
-        result = reset_odom_service.call(roslibpy.ServiceRequest())
-        print("ODOM Reset:", result)
-        self.initial_yaw = None
-        self.yaw = 0
-
-    def reset_map(self):
-        """Reset the entire occupancy map to unknown (-1)."""
-        print("Resetting map to unknown (-1)...")
-        self.hit_counts = [0] * (self.map_width * self.map_height)
-        self.miss_counts = [0] * (self.map_width * self.map_height)
-        self.persistent_map = [-1] * (self.map_width * self.map_height)
-    
-
-    def interpolate_pose(self, query_time):
-        """Used to sync the odom and scan time stamps"""
-
-        # This is mainly used to eliminate our ODOM map from becoming blurry or having ghost readings
-        # Interpolating estimates the position of the robot when a LIDAR scan is taking place
-
-        if len(self.odom_buffer) < 2: # need at least 2 odom time stamps in order to sync with scan data
-            return None
-
-        for i in range(len(self.odom_buffer) - 1): # if the number of ODOM time stamps are greater than 2 (so 3 scans) run this For loop for those 2 ODOM messagess
-            t0, t1 = self.odom_buffer[i]['time'], self.odom_buffer[i + 1]['time'] # loop through the two ODOM timestamps (t0 and t1)
-            if t0 <= query_time <= t1: # found two ODOM positions that "surround" the desired time
-                alpha = (query_time - t0) / (t1 - t0) # calculates ratio between 0 and 1 to see how far query_time is between t0 and t1
-                # Linear Interpolation of x and y positions
-                x = (1 - alpha) * self.odom_buffer[i]['x'] + alpha * self.odom_buffer[i + 1]['x']
-                y = (1 - alpha) * self.odom_buffer[i]['y'] + alpha * self.odom_buffer[i + 1]['y']
-                # Angle Interpolation of yaw
-                yaw0 = self.odom_buffer[i]['yaw']
-                yaw1 = self.odom_buffer[i + 1]['yaw']
-                # Handle yaw wraparound
-                dyaw = self.wrap_to_pi(yaw1 - yaw0)
-                yaw = self.wrap_to_pi(yaw0 + alpha * dyaw)
-                return x, y, yaw
-
-        return None  # If time is outside buffer
-
-    def make_grid(self):
-        if not self.ranges or not self.angs:
-            print("LIDAR data empty")
-            return None
-
-        MAX_CONFIDENCE = 10
-
-        def set_cell(xi, yi, is_occupied):
-            if 0 <= xi < self.map_width and 0 <= yi < self.map_height:
-                idx = yi * self.map_width + xi # index the locatoin of cell
-
-                if is_occupied:
-                    self.hit_counts[idx] = min(self.hit_counts[idx] + 1, MAX_CONFIDENCE)
+                        msg = {'linear': {'x': x_vel, 'y': 0.0, 'z': 0.0},
+                                    'angular': {'x': 0.0, 'y': 0.0, 'z': turn_vel}}
+                        sleep(0.1)
+                        self.topics['topic_cmd_vel'].publish(msg)
+                        # print(f"{msg}")
+                # if the bot is in autonomous mode, we will use the velocity controller to control the robot
                 else:
-                    self.miss_counts[idx] = min(self.miss_counts[idx] + 1, MAX_CONFIDENCE)
-
-        # Convert robots postion from ODOM Coordinate to Ocupancy Coordinate
-        robot_grid_x = int((self.x - self.map_origin_x) / self.resolution)
-        robot_grid_y = int((self.y - self.map_origin_y) / self.resolution)
-
-        # MAX and MIN range settings of LIDAR 
-        min_valid_range = 0.25 # meters
-        max_valid_range = 15.0  # LIDAR range is 30 meters however max_valid_range set to 5 meters for more accurate ODOM map
-
-        # Iterate over all of the LIDAR rays and look at that rays' specific angle and range
-        for i, (r, a) in enumerate(zip(self.ranges, self.angs)): # zip a range angle pair into a tuple then enumerate (index) the range and angle pair
-            if not (min_valid_range < r < max_valid_range): # only look at LIDAR rays inbetween the MAX and MIN range
-                continue
-
-            # Estimate robot's position at the exact time the scan was taken using Interpolation
-            time_offset = (i / len(self.ranges)) * self.scan_duration # calculate any offset time from the scan time
-            ray_time = self.scan_time + time_offset 
-
-            pose = self.interpolate_pose(ray_time)
-            if pose is None:
-                continue
-
-            pose_x, pose_y, pose_yaw = pose
-
-            # Convert LIDAR measurment into ODOM Coord System
-            hit_x = pose_x + r * math.cos(pose_yaw + a)
-            hit_y = pose_y + r * math.sin(pose_yaw + a)
-
-            # ODOM to Ocupancy Map
-            grid_x = int((hit_x - self.map_origin_x) / self.resolution)
-            grid_y = int((hit_y - self.map_origin_y) / self.resolution)
-
-            # Bresenham's algorithm to trace free cells
-            # This marks all cells along the scan as "Free" and the final cell as "Occupied"
-            x0, y0 = robot_grid_x, robot_grid_y
-            x1, y1 = grid_x, grid_y
-            dx = abs(x1 - x0)
-            dy = abs(y1 - y0)
-            sx = 1 if x0 < x1 else -1
-            sy = 1 if y0 < y1 else -1
-            err = dx - dy
-
-            # Aligning the ODOM map to Ocupancy Map for free and occupied cells
-            while True:
-                set_cell(x0, y0, is_occupied=False)  # Free cell
-                if x0 == x1 and y0 == y1:
-                    break
-                e2 = 2 * err
-                if e2 > -dy:
-                    err -= dy
-                    x0 += sx
-                if e2 < dx:
-                    err += dx
-                    y0 += sy
-
-            set_cell(x1, y1, is_occupied=True)  # Hit point = occupied
-
-        hit_threshold = 3
-        miss_threshold = 5
-
-        # This will mark a cell as being "Free" or "Occupied"
-        for idx in range(len(self.persistent_map)):
-            if self.hit_counts[idx] >= hit_threshold:
-                self.persistent_map[idx] = 100
-            elif self.miss_counts[idx] >= miss_threshold:
-                self.persistent_map[idx] = 0
+                    self.vel_msg = self.velcon.vel_msg(self)
+                    self.topics['topic_cmd_vel'].publish(self.vel_msg)
+                    sleep(0.05)
+            # if the robot is not armed, we will stop the robot                         
             else:
-                self.persistent_map[idx] = -1
-
-        # Create a copy of the persistent map for publishing
-        map_with_robot = self.persistent_map[:]
-
-        # Draw the robot's current position as a filled circle (temporary overlay)
-        for dx in range(-self.robot_radius_cells, self.robot_radius_cells + 1):
-            for dy in range(-self.robot_radius_cells, self.robot_radius_cells + 1):
-                if dx * dx + dy * dy <= self.robot_radius_cells ** 2:
-                    cx = robot_grid_x + dx
-                    cy = robot_grid_y + dy
-                    if 0 <= cx < self.map_width and 0 <= cy < self.map_height:
-                        idx = cy * self.map_width + cx
-                        map_with_robot[idx] = 50  # semi-occupied value for robot
-
-        arrow_length_cells = 5  # Length of the arrow in cells
-
-        # Draw the robot's heading direction as a line
-        for i in range(arrow_length_cells):
-            arrow_xi = robot_grid_x + int(round(i * math.cos(self.yaw)))
-            arrow_yi = robot_grid_y + int(round(i * math.sin(self.yaw)))
-
-            if 0 <= arrow_xi < self.map_width and 0 <= arrow_yi < self.map_height:
-                idx = arrow_yi * self.map_width + arrow_xi
-                map_with_robot[idx] = 75  # Arbitrary value to show arrow (darker than robot circle)
-
-
-        grid_msg = {
-            'header': {
-                'frame_id': 'odom',
-                'stamp': {'secs': int(time.time()), 'nsecs': 0}
-            },
-            'info': {
-                'map_load_time': {'secs': int(time.time()), 'nsecs': 0},
-                'resolution': self.resolution,
-                'width': self.map_width,
-                'height': self.map_height,
-                'origin': {
-                    'position': {'x': self.map_origin_x, 'y': self.map_origin_y, 'z': 0.0},
-                    'orientation': {'x': 0.0, 'y': 0.0, 'z': 0.0, 'w': 1.0}
-                }
-            },
-            'data': map_with_robot,
-        }
-        return grid_msg
+                msg = {'linear': {'x': 0, 'y': 0.0, 'z': 0.0},
+                                    'angular': {'x': 0.0, 'y': 0.0, 'z': 0}}
+                self.topics['topic_cmd_vel'].publish(msg)
+                sleep(0.1)
     
-    def start_mapping(self):
-        print("Press 'r' to reset the map.")
-        while self.ros.is_connected:
-            # Check for reset key
-            if keyboard.is_pressed('r'):
-                self.reset_map()
-                time.sleep(0.5)  # debounce to avoid rapid multiple resets
-                print("Map has been reset")
+    # light controll message for the robot
+    def light_msg(self):
+        while not self.stop:
+                if self.color_butt == 1:
+                    if self.armed == False:
+                        """This publishes a solid light message to our robot"""
+                        msg = {'override_system': True, 
+                            'leds': self.light_cmd}
+                        self.topics['topic_cmd_lightring'].publish(msg)
+                        # print(f"Sent light command")
+                        self.color_butt = 0
+                        sleep(.1)
+                    else:
+                        """This publishes a flashing light message to our robot"""
+                        msg = {'override_system': True, 
+                            'leds': self.light_cmd}
+                        self.topics['topic_cmd_lightring'].publish(msg)
+                        # print(f"Sent armed light command")
+                        sleep(.3)
+                        msg = {}
+                        self.topics['topic_cmd_lightring'].publish(msg)
+                        sleep(.3)
+                else:
+                    pass
 
-            # Send mapping message
-            grid_msg = self.make_grid()
-            if grid_msg:
-                self.map_topic.publish(roslibpy.Message(grid_msg))
-                print("Publishing Map")
-            else:
-                print("No map data to publish")
+    # Sound control message for the robot
+    def sound_msg(self):
+        while not self.stop:
+            if self.sound_cmd != None:
+                msg = {'append': True,
+                        'notes': [star_spangled_banner[5]]}
+                self.topics['topic_cmd_audio'].publish(msg)
+                sleep(0.1)
+                print("sent sound command")
 
-            time.sleep(2)  # mapping frequency
 
 
-# Example of how to initialize and run the mapper
-if __name__ == "__main__":
-    mapper = OccupancyGridMapper(ip='192.168.8.104', port=9012, robot_name='echo', topic_name="mapmike")
-    mapper.start_mapping()
+    # def get_grid(self, x, y):
+    def make_grid(self):
+        global occupancy_grid, update_grid, robot_pos, robot_yaw
+       # Grid setup and variable initialization
+        grid_width = 500
+        grid_height = 500
+        resolution = 0.1
+        max_confidence = 100
+        min_confidence = -1
+        robot_pos = self.odom_values
+        map_origin = [robot_pos[0] - (grid_width * resolution) / 2, robot_pos[1] - (grid_height * resolution) / 2]
+
+
+        update_grid = np.full((grid_height, grid_width), 0)  # Initialize with zeros
+
+        # Initialize occupancy grid and confidence map
+        if self.room_made == 0:
+            self.room_made = 1
+            occupancy_grid = np.full((grid_height, grid_width), -1)  # -1 for unknown cells
+            robot_yaw = self.yaw_deg  # Robot's yaw (orientation)
+            print("Occupancy Grid Created")
+
+        # Update occupancy grid based on LiDAR data
+        index = 0
+        for r in self.ranges:
+            angle_scan = self.yaw_rad + self.angle_min + self.angle_increment * index  # Calculate the angle for each range reading
+            # Increment the index for the next range reading
+
+           # scan_time = self.scan_time + (index / len(self.ranges)) # Calculate the scan time for each range reading
+
+            if math.isinf(r) or math.isnan(r): # if range is inf or nan, skip to next
+                continue
+            
+            # Calculate the x and y coordinates of the point in the robot's frame
+            # and then transform to the map frame
+            x = robot_pos[0] + r * math.cos(angle_scan)
+            y = robot_pos[1] + r * math.sin(angle_scan)
+            
+            # Convert the coordinates to grid indices
+            gx = int((x + (grid_width * resolution) / 2) / resolution)
+            gy = int((y + (grid_height * resolution) / 2) / resolution)
+            
+            # Check if the grid indices are within bounds then update the grid
+            if 0 <= gx < grid_width and 0 <= gy < grid_height:
+                occupancy_grid[gx,gy] = min(occupancy_grid[gx,gy] + 5, max_confidence)  # Increment confidence map
+
+            # Calculate the distance from the robot to the point
+            # and update the confidence map for the cells along the line of sight
+            points = int(r / resolution)  # Number of points along the line of sight
+            steps = np.linspace(0, r, points)  # Number of steps along the line of sight
+
+            # Loop through the cells along the line of sight and update the update grid
+            for i in steps:
+                step_x = robot_pos[0] + i * math.cos(angle_scan)
+                step_y = robot_pos[1] + i * math.sin(angle_scan)
+
+                step_gx = int((step_x + (grid_width * resolution) / 2) / resolution)
+                step_gy = int((step_y + (grid_height * resolution) / 2) / resolution)
+                
+                # Check if the grid indices are within bounds
+                if 0 <= step_gx < grid_width and 0 <= step_gy < grid_height:
+                    if occupancy_grid[step_gx, step_gy] > 0:
+                        occupancy_grid[step_gx, step_gy] = max(occupancy_grid[step_gx, step_gy], min_confidence)  # Decrement confidence map
+                    else:
+                        occupancy_grid[step_gx, step_gy] = max(occupancy_grid[step_gx, step_gy] + 1, min_confidence)  # Decrement confidence map
+            
+
+
+            angle_scan += self.angle_increment
+            index += 1 
+
+        send_grid = occupancy_grid.flatten().tolist()
+        send_grid = [int(x) for x in send_grid]  # Convert to int
+
+        # create the occupancy grid message
+        occupancy_msg = {
+            'header': {
+            'frame_id': 'map',
+            'stamp': {'secs': int(time()), 'nsecs': 0}},
+            
+            'info': {
+            'map_load_time': {'secs': int(time()), 'nsecs': 0},
+            'resolution': resolution,
+            'width': grid_width,
+            'height': grid_height,
+            'origin': {
+                'position': {'x':  map_origin[0]-robot_pos[0], 'y':  map_origin[1]-robot_pos[1], 'z': 0.0},
+                'orientation': {'x': 0.0, 'y': 0.0, 'z': 0, 'w': 1.0}}},
+            'data': send_grid}
+        # print(occupancy_grid)
+        return(occupancy_msg)  
+        
+
+    def grid_msg(self):
+        while not self.stop:
+            if self.send_grid == 1:
+                """This publishes a grid message to our robot"""
+                self.topics['topic_mapper'].publish(roslibpy.Message(self.make_grid()))
+                print("Occupancy Grid Sent")
+                # print(f"Publishing occupancy grid on {self.robot_name}")
+                self.send_grid = 0
+                sleep(.1)  # Publish at 10 Hz       
+
+    # def time_sync(self):
+    #     if self.odom_time2:
+    #         if self.odom_time1 < self.scan_time < self.odom_time2:
+    #             pass
+    #     self.odom_time2 = self.odom_time1
+    #     self.odom_time1 = self.odom_time
+
+
+
+    def clbk_scan(self, msg):
+        # print(msg)
+        self.angle_min = msg['angle_min']
+        self.angle_max = msg['angle_max']
+        self.angle_increment = msg['angle_increment']
+        self.ranges = msg['ranges']
+        self.scan_stamp = msg['header']['stamp']
+        self.scan_time = msg['time_increment'] * len(self.ranges)
+
+        # if self.scan_stamp:
+        #     self.scan_time = self.scan_stamp['sec'] + (self.scan_stamp['nanosec'] / 1e9)
+        # else:
+        #     self.scan_time = time()
+        # if self.scan_time <= .1:
+        #     self.scan_time = 0.1
+        return(self.ranges, self.angle_min, self.angle_max, self.angle_increment)
+    
+    def reset_map(self):
+        self.room_made = 0
+        print("Room Map Reset")
+    
+    def clbk_ir_intensity (self, msg):
+        ir_far_left = msg['readings'][0]['value']
+        ir_mid_left = msg['readings'][1]['value']
+        ir_front_left = msg['readings'][2]['value']
+        ir_center = msg['readings'][3]['value']
+        ir_front_right = msg['readings'][4]['value']
+        ir_mid_right = msg['readings'][5]['value']
+        ir_far_right = msg['readings'][6]['value']
+        self.ir_values = [ir_far_left, ir_mid_left, ir_front_left, ir_center, ir_front_right, ir_mid_right, ir_far_right]
+        return(self.ir_values)
+
+    def clbk_odom(self, msg):
+        x_pos = msg['pose']['pose']['position']['x']
+        y_pos = msg['pose']['pose']['position']['y']
+        z_pos = msg['pose']['pose']['position']['z']
+        ## orientation step
+        self.odom_values = [x_pos, y_pos, z_pos]
+        self.odom_values_round = [round(x_pos, 2), round(y_pos, 2), round(z_pos, 2)]
+        self.odom_stamp = msg['header']['stamp']
+
+        o = msg['pose']['pose']['orientation']
+        x = o.get('x')
+        y = o.get('y')
+        z = o.get('z')
+        w = o.get('w')
+        self.yaw_rad = atan2(2*(x*y+z*w), 1-2 *(y**2 +z**2))
+        # if self.odom_stamp:
+        #     self.odom_time1 = self.odom_stamp['sec'] + (self.odom_stamp['nanosec'] / 1e9)
+        # else:
+        #     self.odom_time1 = time()
+        return(self.odom_values)
+    
+    def clbk_imu(self, msg):
+        o = msg.get('orientation')
+        x = o.get('x')
+        y = o.get('y')
+        z = o.get('z')
+        w = o.get('w')
+        yaw_rad = atan2(2*(x*y+z*w), 1-2 *(y**2 +z**2))
+        if self.yaw_got == 0:
+            self.yaw_got = 1
+            self.yaw_initial = yaw_rad
+
+        # Makes the initial angle zero and limits the degrees to -180 and 180
+        self.yaw_deg = degrees(yaw_rad) 
+        return(self.yaw_deg)
+    
+    def clbk_mode(self, msg):
+        mode_msg = msg.get('data')
+        if mode_msg == 'AUTO':
+            self.manual = False
+            self.light_cmd = self.ring_colors[2]
+            self.color_butt = 1
+            print('\n Robot is in Autonomous Mode')
+        elif mode_msg == 'MANUAL':
+            self.manual = True
+            self.light_cmd = self.ring_colors[3]
+            self.color_butt = 1
+            print('\n Robot is in Manual Mode')
+        return(self.manual)
+    
+    def reset_pose(self):
+        reset_odom_service = roslibpy.Service(self.ros, f'/{self.robot_name}/reset_pose', 'irobot_create_msgs/ResetPose')
+        reset_odom_service.call(roslibpy.ServiceRequest())
+        self.reset_map()
+        print("Pose Reset")
+
+    # this function helps to create the topics for the robot
+    def create_topics(self):
+        for i in range(len(self.control_name)):
+            self.topics['topic_'+ self.control_name[i]] = roslibpy.Topic(self.ros, self.topic_names[i], self.topic_types[i])
+        print("Topics Created")
+    # this function creates the subscribers for the robot
+    def create_subs(self):
+        for sub_name in self.sub_name:
+            sub_var_name = 'sub_' + sub_name
+            callback_name = 'clbk_' + sub_name
+            # for each subscriber, create a new topic and subscribe to it
+            self.subs[sub_var_name] = roslibpy.Topic(self.ros, f'/{self.robot_name}/{sub_name}', self.sub_types[self.sub_name.index(sub_name)])
+            self.subs[sub_var_name].subscribe(getattr(self, callback_name))
+            # print(f"Subscribed to {sub_var_name} with callback {callback_name}")
+        print("Subscribers Created")
+    # This function is used to show the values of the robot every time the alt button is pressed
+    def show_subs(self):        
+        #print(f'IR: {self.ir_values}') 
+        #print(f'Odom: {self.odom_values_round}')
+        #print(f'IMU: {round(self.yaw_deg, 2)}')
+        #print(f'Vel MSG:: {self.vel_msg}')
+        #print(f'MODE: {self.manual}')
+        #print(f'Ranges: {self.ranges[1000]}')
+        #print(f'Angle Min: {self.angle_min}')
+        #print(f'Angle Max: {self.angle_max}')
+        #print(f'Angle Increment: {self.angle_increment}')
+        #print(f'Grid Array: {self.grid_array}')
+        self.send_grid = 1
+        # self.reset_map()
+        sleep(.1)
+    # start the threads function
+    def start_threads(self):
+        """This method starts our thread"""
+        print(f'Starting {len(self.threads)} threads!')
+        [t.start() for t in self.threads]
+    # end the threads function
+    def end_threads(self):
+        """This ends / joins all of our threads"""
+        print("Joining all threads!")
+        [t.join() for t in self.threads]
+        print("Ending Program")
+        self.stop = True
+
+        # main loop function to run the program
+    def run_loop(self):
+        self.create_subs()
+        self.create_topics()
+        # self.reset_pose()
+        self.start_threads()
+
+
+        while self.stop == False:
+            self.pygame_events()
+
+        if self.stop == True:
+            self.end_threads()
+
+    # function to test the connection to the robot
+    def test_connection(self):
+        self.ros.run()
+        return self.ros.is_connected
+
+    # Main Code that runs the program
+if __name__ == '__main__':
+
+    robot = RobotController()
+    connect = robot.test_connection()
+    print(f'Connection: {connect}')
+    if connect == True:
+        start_time = time()
+        robot.run_loop()
+        end_time = time()
+        print(f"Total Time = {(end_time - start_time):.3f} seconds")  
+    else:
+        print("Connection Unsuccessful, Exiting Code")
+        exit()

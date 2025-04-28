@@ -28,7 +28,7 @@ class RobotController:
         self.ring_colors = ring_colors
 
         # Define the Robot that we want to control
-        self.robot_name = 'foxtrot'
+        self.robot_name = 'india'
         # create robot topics
         self.control_name = ['cmd_vel', 'cmd_lightring', 'cmd_audio', 'mapper']
         self.topic_types = ['geometry_msgs/Twist', 'irobot_create_msgs/LightringLeds', 'irobot_create_msgs/AudioNoteVector', 'nav_msgs/OccupancyGrid']
@@ -36,8 +36,10 @@ class RobotController:
         self.topics = {}
 
         # create subscribers
-        self.sub_name = ['ir_intensity', 'odom', 'imu', 'mode', 'scan']
-        self.sub_types = ['irobot_create_msgs/IrIntensityVector', 'nav_msgs/Odometry', 'sensor_msgs/Imu','std_msgs/String', 'sensor_msgs/LaserScan']
+        # self.sub_name = ['ir_intensity', 'odom', 'imu', 'mode', 'scan']
+        self.sub_name = ['odom', 'mode', 'scan']
+        # self.sub_types = ['irobot_create_msgs/IrIntensityVector', 'nav_msgs/Odometry', 'sensor_msgs/Imu','std_msgs/String', 'sensor_msgs/LaserScan']
+        self.sub_types = ['nav_msgs/Odometry','std_msgs/String', 'sensor_msgs/LaserScan']
         self.sub_names = [f'/{self.robot_name}/{c}' for c in self.sub_name]
         self.subs = {}
 
@@ -81,6 +83,9 @@ class RobotController:
         self.angle_max = 0
         self.angle_increment = 0
         self.room_made = 0
+        self.send_grid = 0
+        self.yaw_got = 0
+        self.odom_time2 = None
 
         self.velcon = RaceVel(self)
 
@@ -241,69 +246,93 @@ class RobotController:
                 sleep(0.1)
                 print("sent sound command")
 
-    
+
+
+    # def get_grid(self, x, y):
     def make_grid(self):
-        """This creates a grid message for our robot"""
-        grid_width = 200
-        grid_height = 200
-        resolution = 0.05
+        global occupancy_grid, update_grid, robot_pos, robot_yaw
+       # Grid setup and variable initialization
+        grid_width = 500
+        grid_height = 500
+        resolution = 0.1
+        max_confidence = 100
+        min_confidence = -1
         robot_pos = self.odom_values
-        robot_yaw = self.yaw_deg
-        
+        map_origin = [robot_pos[0] - (grid_width * resolution) / 2, robot_pos[1] - (grid_height * resolution) / 2]
+
+
+        update_grid = np.full((grid_height, grid_width), 0)  # Initialize with zeros
+
+        # Initialize occupancy grid and confidence map
         if self.room_made == 0:
             self.room_made = 1
-            occupancy_grid = [-1] * (grid_width * grid_height)
-            robot_pos = [0.0, 0.0]  # x, y position of the robot
-            robot_yaw = 0.0  # Robot's yaw (orientation)
+            occupancy_grid = np.full((grid_height, grid_width), -1)  # -1 for unknown cells
+            robot_yaw = self.yaw_deg  # Robot's yaw (orientation)
             print("Occupancy Grid Created")
-        # Robot position and orientation
 
-        angle = self.angle_min
-
+        # Update occupancy grid based on LiDAR data
+        index = 0
         for r in self.ranges:
-            if math.isinf(r) or math.isnan(r):
-                angle += self.angle_increment
+            angle_scan = self.yaw_rad + self.angle_min + self.angle_increment * index  # Calculate the angle for each range reading
+            # Increment the index for the next range reading
+
+           # scan_time = self.scan_time + (index / len(self.ranges)) # Calculate the scan time for each range reading
+
+            if math.isinf(r) or math.isnan(r): # if range is inf or nan, skip to next
                 continue
-        
-        # Calculate the x, y coordinates of the point based on the range and angle
-            x = r * math.cos(angle)
-            y = r * math.sin(angle)
-            angle += self.angle_increment
             
-            # Convert the world coordinates to grid coordinates
+            # Calculate the x and y coordinates of the point in the robot's frame
+            # and then transform to the map frame
+            x = robot_pos[0] + r * math.cos(angle_scan)
+            y = robot_pos[1] + r * math.sin(angle_scan)
+            
+            # Convert the coordinates to grid indices
             gx = int((x + (grid_width * resolution) / 2) / resolution)
             gy = int((y + (grid_height * resolution) / 2) / resolution)
             
-            # If the grid coordinates are valid, update the grid
+            # Check if the grid indices are within bounds then update the grid
             if 0 <= gx < grid_width and 0 <= gy < grid_height:
-                idx = gy * grid_width + gx
-                occupancy_grid[idx] = 100  # Mark the cell as occupied (obstacle)
-            
-            # Now, trace back from the robot's current position to this point
-            # Mark cells as free along the path, avoiding obstacles
-            x_robot = robot_pos[0]
-            y_robot = robot_pos[1]
-            x_diff = x - x_robot
-            y_diff = y - y_robot
-            dist = math.sqrt(x_diff**2 + y_diff**2)
-            
-            steps = int(dist / resolution)  # Number of steps to traverse along the line
-        
-            for i in range(steps):
-                # Intermediate points along the line from robot to the obstacle
-                step_x = x_robot + (x_diff * i / steps)
-                step_y = y_robot + (y_diff * i / steps)
+                update_grid[gx,gy] = min(update_grid[gx,gy] + 5, max_confidence)  # Increment confidence map
+
+            # Calculate the distance from the robot to the point
+            # and update the confidence map for the cells along the line of sight
+            points = int(r / resolution)  # Number of points along the line of sight
+            steps = np.linspace(0, r, points)  # Number of steps along the line of sight
+
+            # Loop through the cells along the line of sight and update the update grid
+            for i in steps:
+                step_x = robot_pos[0] + i * math.cos(angle_scan)
+                step_y = robot_pos[1] + i * math.sin(angle_scan)
+
+                step_gx = int((step_x + (grid_width * resolution) / 2) / resolution)
+                step_gy = int((step_y + (grid_height * resolution) / 2) / resolution)
                 
-                # Convert intermediate points to grid coordinates
-                gx_step = int((step_x + (grid_width * resolution) / 2) / resolution)
-                gy_step = int((step_y + (grid_height * resolution) / 2) / resolution)
-                
-                if 0 <= gx_step < grid_width and 0 <= gy_step < grid_height:
-                    idx_step = gy_step * grid_width + gx_step
-                    if occupancy_grid[idx_step] != 100:  # Don't overwrite occupied cells
-                        occupancy_grid[idx_step] = 0  # Mark as free space (no object)
+                # Check if the grid indices are within bounds
+                if 0 <= step_gx < grid_width and 0 <= step_gy < grid_height:
+                    if occupancy_grid[step_gx, step_gy] >= 0:
+                        occupancy_grid[step_gx, step_gy] = 0
+                    else:
+                        update_grid[step_gx, step_gy] += 1
+            
 
 
+            angle_scan += self.angle_increment
+            index += 1 
+
+        for i in range(grid_height):
+            for j in range(grid_width):
+                #print(i,j)
+                occupancy_grid[i,j] += update_grid[i,j]
+                if occupancy_grid[i,j] > 100:
+                    occupancy_grid[i,j] = 100
+                
+                elif occupancy_grid[i,j] < -1:
+                    occupancy_grid[i,j] = -1
+
+        send_grid = occupancy_grid.flatten().tolist()
+        send_grid = [int(x) for x in send_grid]  # Convert to int
+
+        # create the occupancy grid message
         occupancy_msg = {
             'header': {
             'frame_id': 'map',
@@ -315,19 +344,31 @@ class RobotController:
             'width': grid_width,
             'height': grid_height,
             'origin': {
-                'position': {'x': robot_pos[0], 'y': robot_pos[1], 'z': 0.0},
-                'orientation': {'x': 0.0, 'y': 0.0, 'z': math.radians(robot_yaw), 'w': 1.0}}},
-            'data': occupancy_grid}
+                'position': {'x':  map_origin[0]-robot_pos[0], 'y':  map_origin[1]-robot_pos[1], 'z': 0.0},
+                'orientation': {'x': 0.0, 'y': 0.0, 'z': 0, 'w': 1.0}}},
+            'data': send_grid}
+        # print(occupancy_grid)
+        return(occupancy_msg)  
         
-        return(occupancy_msg)
-           
-    
+
     def grid_msg(self):
         while not self.stop:
-            """This publishes a grid message to our robot"""
-            self.topics['topic_mapper'].publish(roslibpy.Message(self.make_grid()))
-            # print(f"Publishing occupancy grid on {self.robot_name}")
-            sleep(.1)  # Publish at 10 Hz       
+            if self.send_grid == 1:
+                """This publishes a grid message to our robot"""
+                self.topics['topic_mapper'].publish(roslibpy.Message(self.make_grid()))
+                print("Occupancy Grid Sent")
+                # print(f"Publishing occupancy grid on {self.robot_name}")
+                self.send_grid = 0
+                sleep(.1)  # Publish at 10 Hz       
+
+    # def time_sync(self):
+    #     if self.odom_time2:
+    #         if self.odom_time1 < self.scan_time < self.odom_time2:
+    #             pass
+    #     self.odom_time2 = self.odom_time1
+    #     self.odom_time1 = self.odom_time
+
+
 
     def clbk_scan(self, msg):
         # print(msg)
@@ -335,12 +376,20 @@ class RobotController:
         self.angle_max = msg['angle_max']
         self.angle_increment = msg['angle_increment']
         self.ranges = msg['ranges']
+        self.scan_stamp = msg['header']['stamp']
+        self.scan_time = msg['time_increment'] * len(self.ranges)
+
+        # if self.scan_stamp:
+        #     self.scan_time = self.scan_stamp['sec'] + (self.scan_stamp['nanosec'] / 1e9)
+        # else:
+        #     self.scan_time = time()
+        # if self.scan_time <= .1:
+        #     self.scan_time = 0.1
         return(self.ranges, self.angle_min, self.angle_max, self.angle_increment)
     
     def reset_map(self):
-        self.room_map = [[-1 for _ in range(100)] for _ in range(50)]
+        self.room_made = 0
         print("Room Map Reset")
-        return(self.room_map)
     
     def clbk_ir_intensity (self, msg):
         ir_far_left = msg['readings'][0]['value']
@@ -357,8 +406,21 @@ class RobotController:
         x_pos = msg['pose']['pose']['position']['x']
         y_pos = msg['pose']['pose']['position']['y']
         z_pos = msg['pose']['pose']['position']['z']
+        ## orientation step
         self.odom_values = [x_pos, y_pos, z_pos]
         self.odom_values_round = [round(x_pos, 2), round(y_pos, 2), round(z_pos, 2)]
+        self.odom_stamp = msg['header']['stamp']
+
+        o = msg['pose']['pose']['orientation']
+        x = o.get('x')
+        y = o.get('y')
+        z = o.get('z')
+        w = o.get('w')
+        self.yaw_rad = atan2(2*(x*y+z*w), 1-2 *(y**2 +z**2))
+        # if self.odom_stamp:
+        #     self.odom_time1 = self.odom_stamp['sec'] + (self.odom_stamp['nanosec'] / 1e9)
+        # else:
+        #     self.odom_time1 = time()
         return(self.odom_values)
     
     def clbk_imu(self, msg):
@@ -367,8 +429,13 @@ class RobotController:
         y = o.get('y')
         z = o.get('z')
         w = o.get('w')
-        yaw = atan2(2*(x*y+z*w), 1-2 *(y**2 +z**2))
-        self.yaw_deg = degrees(yaw)
+        yaw_rad = atan2(2*(x*y+z*w), 1-2 *(y**2 +z**2))
+        if self.yaw_got == 0:
+            self.yaw_got = 1
+            self.yaw_initial = yaw_rad
+
+        # Makes the initial angle zero and limits the degrees to -180 and 180
+        self.yaw_deg = degrees(yaw_rad) 
         return(self.yaw_deg)
     
     def clbk_mode(self, msg):
@@ -417,7 +484,8 @@ class RobotController:
         #print(f'Angle Min: {self.angle_min}')
         #print(f'Angle Max: {self.angle_max}')
         #print(f'Angle Increment: {self.angle_increment}')
-        print(f'Grid Array: {self.grid_array}')
+        #print(f'Grid Array: {self.grid_array}')
+        self.send_grid = 1
         # self.reset_map()
         sleep(.1)
     # start the threads function
